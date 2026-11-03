@@ -364,6 +364,9 @@
   }
 
   RENDER.attract = function () {
+    var now = new Date(), years = now.getFullYear() - 1964;
+    var lights = '';
+    for (var i = 0; i < 26; i++) lights += '<span class="runway-light" style="animation-delay:' + (i * 0.09).toFixed(2) + 's"></span>';
     return '' +
       '<div class="attract" data-act="begin">' +
         '<div class="attract-slides" id="attract-slides">' +
@@ -371,19 +374,39 @@
         '</div>' +
         '<video class="attract-video" id="attract-video" muted loop playsinline autoplay src="' + esc(C.introFilm) + '"></video>' +
         '<div class="attract-shade"></div>' +
-        '<div class="attract-content">' +
-          '<div class="attract-crests"><img src="assets/icons/naf.png" alt="" /><span class="attract-crest-rule"></span><img src="assets/icons/afcsc.png" alt="" /></div>' +
-          '<div class="eyebrow attract-kicker">' + esc(C.meta.kicker) + '</div>' +
-          '<h1 class="attract-title">Air Marshal S.K. Aneke<br/>Hall of Fame</h1>' +
-          '<div class="attract-sub">' + esc(C.meta.subtitle) + '</div>' +
-          '<div class="attract-touch">' +
-            '<div class="touch-target"><span class="touch-ring"></span><span class="touch-ring touch-ring--late"></span><span class="touch-dot"></span></div>' +
-            '<div class="attract-touch-label">Touch anywhere to begin</div>' +
+
+        '<header class="attract-bar">' +
+          '<div class="attract-crests">' +
+            '<img src="assets/icons/naf.png" alt="Nigerian Air Force" />' +
+            '<span class="attract-crest-text"><b>Nigerian Air Force</b><span>Established 18 April 1964</span></span>' +
+            '<span class="attract-crest-rule"></span>' +
+            '<img src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College" />' +
+            '<span class="attract-crest-text"><b>Armed Forces Command and Staff College</b><span>Jaji, Kaduna State</span></span>' +
+          '</div>' +
+          '<div class="attract-clock"><span id="attract-date"></span><span class="attract-time" id="attract-time"></span></div>' +
+        '</header>' +
+
+        '<div class="attract-hero">' +
+          '<div class="attract-kicker">The Air Marshal S.K. Aneke</div>' +
+          '<h1 class="attract-title">Hall of Fame</h1>' +
+          '<p class="attract-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
+          '<div class="attract-figures">' +
+            figure(String(years), 'years of service') +
+            figure(String(C.chiefs.length), 'Commanders &amp; Chiefs') +
+            figure(String(C.events.length), 'recorded moments') +
+            figure(String(C.bases.length), 'bases on the map') +
           '</div>' +
         '</div>' +
-        '<div class="attract-fact" id="attract-fact"></div>' +
+
+        '<aside class="attract-card" id="attract-card"></aside>' +
+
+        '<div class="attract-begin">' +
+          '<div class="runway">' + lights + '</div>' +
+          '<div class="attract-begin-label"><span>Touch anywhere to begin</span>' + ICON.next + '</div>' +
+        '</div>' +
       '</div>';
   };
+  function figure(n, label) { return '<div class="figure"><span class="figure-n">' + n + '</span><span class="figure-l">' + label + '</span></div>'; }
   AFTER.attract = function (root) {
     var v = root.querySelector('#attract-video');
     v.addEventListener('error', function () { v.classList.add('hidden'); });
@@ -410,15 +433,24 @@
       incoming.classList.remove('on'); void incoming.offsetWidth; incoming.classList.add('on');
       outgoing.classList.remove('on');
     }
-    var factEl = $('attract-fact');
-    if (factEl) {
+    var now = new Date();
+    var dEl = $('attract-date'), tEl = $('attract-time');
+    if (dEl) dEl.textContent = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()] + ', ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+    if (tEl) tEl.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    var card = $('attract-card');
+    if (card) {
       var today = onThisDay();
       var e = today.length && attractIdx % 3 === 0 ? today[(attractIdx / 3) % today.length] : attractFacts[Math.floor(Math.random() * attractFacts.length)];
-      var label = today.length && today.indexOf(e) >= 0 ? 'On this day' : 'From the archive';
-      factEl.classList.remove('on');
+      var label = today.indexOf(e) >= 0 ? 'On this day' : 'From the archive';
+      var ph = e.photos && e.photos[0];
+      card.classList.remove('on');
       setTimeout(function () {
-        factEl.innerHTML = '<span class="eyebrow">' + label + ' · ' + esc(e.date) + '</span><span class="attract-fact-title">' + esc(e.title) + '</span>';
-        factEl.classList.add('on');
+        card.innerHTML = (ph ? frame(ph, 'attract-card-img') : '') +
+          '<span class="attract-card-body"><span class="eyebrow">' + label + '</span>' +
+          '<span class="attract-card-date">' + esc(e.date) + '</span>' +
+          '<span class="attract-card-title">' + esc(e.title) + '</span></span>' +
+          '<span class="attract-card-progress"></span>';
+        card.classList.add('on');
       }, 450);
     }
     attractIdx++;

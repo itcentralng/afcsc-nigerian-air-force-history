@@ -14,10 +14,13 @@ The content was extracted from the earlier web prototype at
 
 ## Screens
 
-- **Welcome**: the intro film loops behind the title (falling back to a slow
-  slideshow of archive photographs when the film is missing), with a rotating
-  "From the archive" fact, or "On this day" when an event shares today's date.
-  Any touch begins.
+- **Welcome**: the intro film plays full screen behind a left-aligned title
+  block: the Nigerian Air Force and AFCSC crests with today's date and time,
+  "Hall of Fame" with the years of service and key figures, and a card that
+  rotates through archive moments ("On this day" when an event shares
+  today's date). A row of runway approach lights leads to "Touch anywhere to
+  begin". If the film is missing, a slow slideshow of archive photographs
+  plays instead. Any touch begins.
 - **Home**: eight stories as picture tiles, the key numbers, a rotating archive
   moment that opens its year, and a progress line showing what the visitor has
   explored.
