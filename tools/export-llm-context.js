@@ -54,7 +54,7 @@ L('- Commands: Tactical Air Command (Makurdi), Special Operations Command (Bauch
 L('- Birthplace of the NAF: Kaduna, where the first base was built from 1964.');
 
 H1('Chiefs of the Air Staff at a glance');
-L('In order of appointment. Dates are as recorded; "present" means still in office as of ' + asOf + '.');
+L('In order of appointment. Dates are as recorded; "present" means still in office as of ' + asOf + '. These are the dates each Chief held office; where the timeline below gives a slightly different appointment date, it usually records when the appointment was announced.');
 L();
 C.chiefs.forEach((c) => {
   L(c.no + '. ' + c.name + ' — ' + title(c) + ', ' + fmt(c.from) + ' to ' + fmt(c.to) + ' (' + tenure(c) + ')' + (c.state ? '; state of origin: ' + c.state : '') + (c.serving ? '; serving' : ''));
