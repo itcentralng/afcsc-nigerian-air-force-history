@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Air Marshal S.K. Aneke Hall of Fame — Nigerian Air Force History</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="stage-wrapper" id="stage-wrapper">
+    <div class="stage" id="stage">
+
+      <!-- ============ AMBIENT SKY (behind every screen) ============ -->
+      <div class="sky" aria-hidden="true">
+        <div class="sky-glow"></div>
+        <div class="sky-cloud sky-cloud--a"></div>
+        <div class="sky-cloud sky-cloud--b"></div>
+        <div class="sky-cloud sky-cloud--c"></div>
+        <div class="sky-grain"></div>
+      </div>
+
+      <!-- ============ PERSISTENT TOP BAR ============ -->
+      <header class="topbar hidden" id="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" data-act="home" aria-label="Home">
+            <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9" /><path d="M9.5 20v-6h5v6" /></svg>
+          </button>
+          <button class="icon-btn" data-act="back" aria-label="Back" id="btn-back">
+            <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
+          </button>
+          <nav class="crumb" id="crumb"></nav>
+        </div>
+        <div class="topbar-brand">
+          <img class="topbar-crest" src="assets/icons/naf.png" alt="" />
+          <div class="topbar-text">
+            <span class="topbar-kicker">Nigerian Air Force · Our History</span>
+            <span class="topbar-title">Air Marshal S.K. Aneke Hall of Fame</span>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="pill-btn" data-act="toggle-big" id="btn-big" aria-pressed="false" title="Larger text">
+            <span class="pill-a">A</span><span class="pill-a pill-a--big">A</span>
+          </button>
+          <button class="pill-btn" data-act="toggle-reach" id="btn-reach" aria-pressed="false" title="Move the controls to the bottom of the screen">
+            <svg viewBox="0 0 24 24"><path d="M12 4v13"/><path d="m6.5 11.5 5.5 5.5 5.5-5.5"/><path d="M5 20.5h14"/></svg>
+            <span>Reach</span>
+          </button>
+          <button class="icon-btn hidden" data-act="toggle-sound" id="btn-sound" aria-label="Mute background music">
+            <svg class="icon-sound-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+            <svg class="icon-sound-off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- ============ SCREENS (rendered by script.js) ============ -->
+      <main class="screens" id="screens">
+        <section class="screen active" id="screen-attract"></section>
+        <section class="screen" id="screen-home"></section>
+        <section class="screen" id="screen-timeline"></section>
+        <section class="screen" id="screen-films"></section>
+        <section class="screen" id="screen-chiefs"></section>
+        <section class="screen" id="screen-chief"></section>
+        <section class="screen" id="screen-college"></section>
+        <section class="screen" id="screen-daw"></section>
+        <section class="screen" id="screen-fleet"></section>
+        <section class="screen" id="screen-connect"></section>
+        <section class="screen" id="screen-archive"></section>
+      </main>
+
+      <!-- ============ PHOTO VIEWER ============ -->
+      <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true">
+        <div class="lightbox-backdrop" data-act="lightbox-close"></div>
+        <button class="lightbox-nav lightbox-nav--prev" data-act="lightbox-prev" aria-label="Previous photo">
+          <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
+        </button>
+        <figure class="lightbox-figure" id="lightbox-figure">
+          <div class="lightbox-frame frame"><img id="lightbox-img" alt="" /></div>
+          <figcaption class="lightbox-caption">
+            <div class="lightbox-meta">
+              <span class="lightbox-date" id="lightbox-date"></span>
+              <span class="lightbox-count" id="lightbox-count"></span>
+            </div>
+            <div class="lightbox-title" id="lightbox-title"></div>
+            <div class="lightbox-text" id="lightbox-text"></div>
+            <button class="ghost-btn hidden" id="lightbox-link" data-act="lightbox-link">Read the story
+              <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+            </button>
+          </figcaption>
+        </figure>
+        <button class="lightbox-nav lightbox-nav--next" data-act="lightbox-next" aria-label="Next photo">
+          <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button class="icon-btn lightbox-close" data-act="lightbox-close" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <!-- ============ FILM PLAYER ============ -->
+      <div class="player hidden" id="player" role="dialog" aria-modal="true">
+        <video id="player-video" playsinline preload="auto"></video>
+        <div class="player-missing hidden" id="player-missing">
+          <div class="player-missing-title">This film is not installed on this kiosk yet.</div>
+          <div class="player-missing-sub" id="player-missing-file"></div>
+        </div>
+        <div class="player-top">
+          <div class="player-heading">
+            <span class="player-sub" id="player-sub"></span>
+            <span class="player-title" id="player-title"></span>
+          </div>
+          <button class="icon-btn" data-act="film-close" aria-label="Close film">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="player-bottom">
+          <button class="icon-btn icon-btn--solid" data-act="film-toggle" aria-label="Play or pause" id="player-toggle">
+            <svg class="icon-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7Z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+          </button>
+          <span class="player-time" id="player-time">0:00 / 0:00</span>
+          <div class="player-scrub" id="player-scrub"><div class="player-scrub-fill" id="player-scrub-fill"></div></div>
+          <button class="ghost-btn" data-act="film-read" id="player-read">Read the story</button>
+          <button class="ghost-btn" data-act="film-next" id="player-next">Next film</button>
+        </div>
+      </div>
+
+      <!-- ============ IDLE WARNING ============ -->
+      <div class="idle hidden" id="idle" data-act="idle-stay">
+        <div class="idle-card">
+          <div class="idle-ring"><span id="idle-count">10</span></div>
+          <div class="idle-title">Are you still exploring?</div>
+          <div class="idle-sub">Touch anywhere to carry on. The Hall of Fame will return to its welcome screen shortly.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="data/content.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
