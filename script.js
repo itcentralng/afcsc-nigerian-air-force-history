@@ -133,12 +133,13 @@
   var ARCHIVE = (function () {
     var seen = {}, out = [];
     function add(src, item) { if (!src || seen[src]) return; seen[src] = true; item.src = src; out.push(item); }
+    // Portraits first, so every Chief's photograph is filed under the Chiefs collection.
+    C.chiefs.forEach(function (c) { add(c.photo, { group: 'chiefs', year: +yr(c.from), date: chiefLabel(c), title: c.name, text: yr(c.from) + ' – ' + (c.to ? yr(c.to) : 'present'), link: { act: 'chief', arg: c.no } }); });
     C.events.forEach(function (e) {
       (e.photos || []).forEach(function (p, i) {
         add(p, { group: 'timeline', year: e.year, date: e.date, title: e.title, text: i === 0 && e.caption ? e.caption : '', link: { act: 'year', arg: e.year } });
       });
     });
-    C.chiefs.forEach(function (c) { add(c.photo, { group: 'chiefs', date: ordinal(c.no) + ' Chief of the Air Staff', title: c.name, text: yr(c.from) + ' – ' + (c.to ? yr(c.to) : 'present'), link: { act: 'chief', arg: c.no } }); });
     C.bases.forEach(function (b) { add(b.photo, { group: 'bases', date: b.city + ' · ' + b.state, title: b.role, text: b.caption || '', link: { act: 'base', arg: b.id } }); });
     C.aircraft.forEach(function (a) { add(a.photo, { group: 'aircraft', date: 'In service from ' + a.inService + ' · ' + a.origin, title: a.name, text: a.caption || '', link: { act: 'go', arg: 'fleet:aircraft' } }); });
     ['college', 'daw'].forEach(function (key) {
