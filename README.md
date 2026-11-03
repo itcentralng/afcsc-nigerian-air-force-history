@@ -27,7 +27,10 @@ The content was extracted from the earlier web prototype at
   a year shows the Chief of the Air Staff at the time, each event with its
   photographs, and the film that tells it.
 - **Films**: seven short films in a full-screen player with scrubbing,
-  "Next film" and a "Read the story" link back into the history.
+  "Next film" and a "Read the story" link back into the history. Any film not
+  yet copied to `assets/video/` shows as "Coming soon" (see
+  `assets/video/README.txt` for the file names); it appears automatically once
+  the file is in place.
 - **II · Past Chiefs of the Air Staff**: every tenure drawn to scale on a
   1963–today ribbon, and a portrait gallery to sweep through. Each Chief has a
   biography page: tenure, time in office, birth, state of origin, notable
@@ -63,8 +66,8 @@ For development, open `index.html` in any modern browser.
 
 The photos and films live under `assets/history`, `assets/photos`,
 `assets/college` and `assets/video`, at the exact paths named in
-`data/content.js`. Anything missing shows a quiet placeholder (and films say
-they are not installed yet), so the kiosk never breaks.
+`data/content.js`. Anything missing shows a quiet placeholder (and films show
+"Coming soon"), so the kiosk never breaks.
 
 To fetch them from the original site:
 
@@ -97,8 +100,10 @@ Counts on the home screen, the archive, the lineage ribbon and the
 connections are all worked out from this file, so adding an event, a Chief or
 a photo needs no code change.
 
-`docs/hall-of-fame-content.txt` is a plain-text export of the same content.
-Regenerate it after editing with `node tools/export-text.js`.
+`docs/naf-history-llm-context.txt` is the same history as a clean reference
+document for use as LLM context (facts and narrative only: no photos,
+captions, films or kiosk wording). Regenerate it after editing with
+`node tools/export-llm-context.js`.
 
 ## Source archive
 

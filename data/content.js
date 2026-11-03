@@ -288,7 +288,7 @@ window.HOF_CONTENT = {
       "date": "1964",
       "title": "Light Liaison Transport Squadron established in Kaduna",
       "text": [
-        "Light Liaison Transport Squadron (Present day 401Flying Training School) was established in Kaduna for converting NAF pilots trained overseas."
+        "Light Liaison Transport Squadron (Present day 401 Flying Training School) was established in Kaduna for converting NAF pilots trained overseas."
       ],
       "photos": [
         "assets/photos/06-timeline/1964-light-liaison-transport-squadron-do27-context.jpg"
@@ -417,7 +417,7 @@ window.HOF_CONTENT = {
       "date": "1967",
       "title": "First combat aircraft arrive from the Soviet Union",
       "text": [
-        "Acquisition of the First Batch of combat aircraft from the Soviet Union. The Nigerian Air Force received some unknown numbers of Mikoyan-Hurevich MiG-17Fs which were delivered to Kano from Egypt. Later, 6 Ilyushin Il-28 medium Bombers were delivered from Egypt and stationed at Calabar and Port Harcourt."
+        "Acquisition of the First Batch of combat aircraft from the Soviet Union. The Nigerian Air Force received some unknown numbers of Mikoyan-Gurevich MiG-17Fs which were delivered to Kano from Egypt. Later, 6 Ilyushin Il-28 medium Bombers were delivered from Egypt and stationed at Calabar and Port Harcourt."
       ],
       "photos": [
         "assets/history/image52.jpeg",
@@ -675,7 +675,7 @@ window.HOF_CONTENT = {
       "date": "1984",
       "title": "PFTW becomes 301 Flying Training School",
       "text": [
-        "PFTW was upgraded to a group status and renamed 301 Flying Training School   (301 FTS)."
+        "PFTW was upgraded to a group status and renamed 301 Flying Training School (301 FTS)."
       ],
       "photos": [
         "assets/photos/06-timeline/1984-301-fts-flying-training-context.jpg"

@@ -87,6 +87,39 @@
     if (f.year) return firstPhoto(eventsInYear(f.year));
     return '';
   }
+  // Which films are actually on this kiosk. Each film file is probed once at
+  // start-up; missing ones show "Coming soon" until the file is dropped into
+  // assets/video/ (no code change needed).
+  var filmStatus = {};
+  function probeFilms() {
+    C.films.forEach(function (f) {
+      var v = document.createElement('video');
+      v.preload = 'metadata';
+      v.muted = true;
+      v.addEventListener('loadedmetadata', function () {
+        filmStatus[f.id] = 'ok';
+        if (!f.duration && isFinite(v.duration)) f.duration = mmss(v.duration);
+        v.removeAttribute('src'); v.load();
+        refreshFilmViews();
+      }, { once: true });
+      v.addEventListener('error', function () { filmStatus[f.id] = 'missing'; refreshFilmViews(); }, { once: true });
+      v.src = f.src;
+    });
+  }
+  function filmReady(f) { return filmStatus[f.id] === 'ok'; }
+  function filmSoon(f) { return filmStatus[f.id] === 'missing'; }
+  var refreshTimer = null;
+  function refreshFilmViews() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(function () {
+      if (['films', 'timeline', 'chiefs', 'college', 'daw'].indexOf(state.screen) >= 0 && el.lightbox.classList.contains('hidden') && !film) {
+        var scrollers = [].map.call(el.screens[state.screen].querySelectorAll('[data-scroll]'), function (n) { return [n.scrollLeft, n.scrollTop]; });
+        show();
+        [].forEach.call(el.screens[state.screen].querySelectorAll('[data-scroll]'), function (n, i) { if (scrollers[i]) { n.scrollLeft = scrollers[i][0]; n.scrollTop = scrollers[i][1]; } });
+      }
+    }, 150);
+  }
+
   function firstPhoto(events) { for (var i = 0; i < events.length; i++) if (events[i].photos && events[i].photos.length) return events[i].photos[0]; return ''; }
 
   // Every photograph in the content, once, tagged with where it belongs.
@@ -594,9 +627,9 @@
   };
 
   function filmButton(f) {
-    return '<button class="film-chip" data-act="film" data-arg="' + f.id + '">' + frame(filmStill(f), 'film-chip-img') +
+    return '<button class="film-chip' + (filmSoon(f) ? ' is-soon' : '') + '" data-act="film" data-arg="' + f.id + '">' + frame(filmStill(f), 'film-chip-img') +
       '<span class="film-chip-play">' + ICON.play + '</span>' +
-      '<span class="film-chip-text"><span class="eyebrow">' + esc(f.subtitle) + '</span><span class="film-chip-title">' + esc(f.title) + '</span></span></button>';
+      '<span class="film-chip-text"><span class="eyebrow">' + (filmSoon(f) ? 'Film coming soon' : esc(f.subtitle)) + '</span><span class="film-chip-title">' + esc(f.title) + '</span></span></button>';
   }
 
   // ---------- Films ----------
@@ -605,11 +638,14 @@
       '<div class="films">' +
         '<div class="section-head">' +
           '<div class="section-heading"><span class="section-num">Films</span><h2 class="section-title">Watch the story</h2></div>' +
-          '<p class="section-intro">Short films from the archive. Tap any film to play it full screen; every film ends with a path into the written history.</p>' +
+          '<p class="section-intro">Short films from the archive. Tap any film to play it full screen; every film ends with a path into the written history.' +
+            (C.films.some(filmSoon) ? ' Films marked “Coming soon” are being added to the Hall of Fame.' : '') + '</p>' +
         '</div>' +
         '<div class="film-grid">' + C.films.map(function (f, i) {
-          return '<button class="film-card' + (i === 0 ? ' film-card--lead' : '') + '" data-act="film" data-arg="' + f.id + '">' +
+          var soon = filmSoon(f);
+          return '<button class="film-card' + (i === 0 ? ' film-card--lead' : '') + (soon ? ' is-soon' : '') + '" data-act="film" data-arg="' + f.id + '">' +
             '<span class="film-card-media">' + frame(filmStill(f), 'film-card-img') + '<span class="film-card-play">' + ICON.play + '</span>' +
+              (soon ? '<span class="soon-badge">Coming soon</span>' : '') +
               (state.watched[f.id] ? '<span class="tile-visited">' + ICON.check + 'Watched</span>' : '') + '</span>' +
             '<span class="film-card-body"><span class="eyebrow">' + esc(f.subtitle) + (f.duration ? ' · ' + esc(f.duration) : '') + '</span>' +
               '<span class="film-card-title">' + esc(f.title) + '</span>' +
@@ -1000,18 +1036,19 @@
     var v = el.video;
     $('player-title').textContent = f.title;
     $('player-sub').textContent = f.subtitle || '';
-    $('player-missing').classList.add('hidden');
-    $('player-missing-file').textContent = f.src;
+    $('player-missing').classList.toggle('hidden', !filmSoon(f));
+    $('player-missing-file').textContent = (f.year ? 'Meanwhile, read the story of ' + f.year + ' in the history of the Air Force.' : 'Meanwhile, explore the written history.');
     $('player-read').textContent = f.year ? 'Read the story of ' + f.year : f.section === 'chiefs' ? 'Meet the Chiefs' : f.section === 'college' ? 'Read about the College' : 'Explore the history';
     var nx = C.films[(C.films.indexOf(f) + 1) % C.films.length];
     $('player-next').innerHTML = 'Next: ' + esc(nx.title) + ICON.next;
     setPlayIcon(false);
     $('player-scrub-fill').style.width = '0%';
     $('player-time').textContent = '0:00 / 0:00';
-    v.src = f.src;
+    if (filmSoon(f)) v.removeAttribute('src'); else v.src = f.src;
+    el.player.classList.toggle('is-soon', filmSoon(f));
     el.player.classList.remove('hidden');
     duckAmbient(true);
-    var p = v.play(); if (p && p.catch) p.catch(function () {});
+    if (!filmSoon(f)) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
   }
   function closeFilm() {
     el.video.pause();
@@ -1033,7 +1070,7 @@
       $('player-time').textContent = mmss(v.currentTime) + ' / ' + mmss(v.duration);
       $('player-scrub-fill').style.width = (v.duration ? v.currentTime / v.duration * 100 : 0) + '%';
     });
-    v.addEventListener('error', function () { if (film) $('player-missing').classList.remove('hidden'); });
+    v.addEventListener('error', function () { if (film && v.getAttribute('src')) { filmStatus[film.id] = 'missing'; el.player.classList.add('is-soon'); $('player-missing').classList.remove('hidden'); } });
     $('player-scrub').addEventListener('pointerdown', function (e) {
       if (!v.duration) return;
       var r = e.currentTarget.getBoundingClientRect();
@@ -1204,6 +1241,7 @@
     initPlayer();
     initLightboxSwipe();
     initAmbient();
+    probeFilms();
     setInterval(idleTick, 1000);
     show();
   }
