@@ -21,16 +21,23 @@
   var AMBIENT_SRC = 'assets/audio/ambient.mp3'; // optional: drop a loop here to enable music
   var AMBIENT_VOLUME = 0.3, AMBIENT_DUCK = 0.05;
 
+  // Chapter titles, navigation labels and standfirsts for each screen.
   var SECTIONS = {
-    timeline: { num: 'I', title: 'History of the Nigerian Air Force' },
-    chiefs:   { num: 'II', title: 'Past Chiefs of the Air Staff' },
-    college:  { num: 'III', title: 'History of the College' },
-    daw:      { num: 'IV', title: 'History of the Department of Air Warfare' },
-    fleet:    { num: 'V', title: 'Fleet & Bases' },
-    connect:  { num: 'VI', title: 'Find your connection' },
-    archive:  { num: 'VII', title: 'Photo archive' },
-    films:    { num: 'Films', title: 'Watch the story' }
+    films:    { n: '', nav: 'Films', kicker: 'Watch', title: 'The story on film' },
+    timeline: { n: '01', nav: 'Timeline', kicker: 'Chapter 01 · The Nigerian Air Force, year by year', title: 'Six decades of service' },
+    chiefs:   { n: '02', nav: 'The Chiefs', kicker: 'Chapter 02 · Chiefs of the Air Staff', title: 'The officers who led the service' },
+    college:  { n: '03', nav: 'The College', kicker: 'Chapter 03 · AFCSC Jaji', title: 'History of the College' },
+    daw:      { n: '04', nav: 'Air Warfare', kicker: 'Chapter 04 · Department of Air Warfare', title: 'Teaching airpower' },
+    fleet:    { n: '05', nav: 'Fleet & Bases', kicker: 'Chapter 05 · Fleet and bases', title: 'Where the Air Force flies, and what it flies' },
+    connect:  { n: '06', nav: 'Your link', kicker: 'Chapter 06 · Your connection', title: 'Where do you fit in the story?' },
+    archive:  { n: '07', nav: 'Archive', kicker: 'Chapter 07 · Photograph archive', title: 'The archive' }
   };
+  // Page heading in the same style as the welcome screen: gold rule, kicker, display title, standfirst.
+  function masthead(key, lede, extraClass) {
+    var sec = SECTIONS[key];
+    return '<header class="masthead ' + (extraClass || '') + '"><div class="masthead-kicker">' + esc(sec.kicker) + '</div>' +
+      '<h2 class="masthead-title">' + esc(sec.title) + '</h2>' + (lede ? '<p class="masthead-lede">' + esc(lede) + '</p>' : '') + '</header>';
+  }
   var EXPLORE_KEYS = ['films', 'timeline', 'chiefs', 'college', 'daw', 'fleet', 'connect', 'archive'];
 
   var state = {
@@ -209,6 +216,7 @@
     prev: '<svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>',
     zoom: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M11 8.5v5M8.5 11h5"/></svg>',
     pin: '<svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg>',
+    person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4 3.9-6.5 7.5-6.5s6.7 2.5 7.5 6.5"/></svg>',
     cal: '<svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="1.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>',
     star: '<svg viewBox="0 0 24 24"><path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8Z"/></svg>',
     plane: '<svg viewBox="0 0 24 24"><path d="M21 15.5v-1.8l-7.5-4.5V4.5a1.5 1.5 0 0 0-3 0v4.7L3 13.7v1.8l7.5-2.2v4.4l-2 1.5v1.3l3.5-1 3.5 1v-1.3l-2-1.5v-4.4Z"/></svg>',
@@ -329,20 +337,18 @@
       initScrollers(el.screens[id]);
       if (AFTER[id]) AFTER[id](el.screens[id]);
     }
-    renderCrumb();
+    document.querySelectorAll('.screen:not(.active) video').forEach(function (v) { v.pause(); });
+    renderChapters();
     if (id === 'attract') startAttract(); else stopAttract();
     if (id === 'home') startHomeFacts(); else stopHomeFacts();
   }
 
-  function renderCrumb() {
-    var parts = ['Our History'];
-    var s = state.screen;
-    if (SECTIONS[s]) parts.push(SECTIONS[s].title);
-    if (s === 'timeline') { var d = C.decades[state.decade]; parts.push(d.from + '–' + d.to); if (state.year) parts.push(String(state.year)); }
-    if (s === 'chief') { parts.push(SECTIONS.chiefs.title); parts.push(chiefByNo(state.chief).shortName); }
-    if (s === 'fleet') parts.push(state.fleetTab === 'bases' ? 'Bases' : 'Aircraft');
-    if (s === 'connect' && state.cmode) parts.push({ state: 'Your state', year: 'Your birth year', chief: 'A Chief you know' }[state.cmode]);
-    el.crumb.innerHTML = parts.map(function (p, i) { return '<span class="crumb-part' + (i === parts.length - 1 ? ' crumb-part--last' : '') + '">' + esc(p) + '</span>'; }).join('<span class="crumb-sep">/</span>');
+  function renderChapters() {
+    var cur = state.screen === 'chief' ? 'chiefs' : state.screen;
+    el.chapters.innerHTML = EXPLORE_KEYS.map(function (k) {
+      return '<button class="chapter' + (k === cur ? ' is-on' : '') + (state.visited[k] ? ' is-visited' : '') + '" data-act="go" data-arg="' + k + '">' +
+        '<span class="chapter-n">' + (SECTIONS[k].n ? esc(SECTIONS[k].n) : ICON.play) + '</span><span class="chapter-l">' + esc(SECTIONS[k].nav) + '</span></button>';
+    }).join('');
   }
 
   // ============================================================
@@ -456,59 +462,60 @@
     attractIdx++;
   }
 
-  // ---------- Home ----------
+  // ---------- Home: a contents page over the intro film ----------
   RENDER.home = function () {
-    var nPhotos = ARCHIVE.length;
-    var tiles = [
-      { key: 'films', img: filmStill(filmById('intro')) || filmStill(C.films[1]), desc: plural(C.films.length, 'short film') + ', from the first cadets to sixty years of service. Most visitors start here.', feature: true },
-      { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: 'From 1961 to today: ' + C.events.length + ' recorded moments, year by year, on a timeline you sweep with your finger.' },
-      { key: 'chiefs', img: chiefByNo(C.chiefs.length).photo, desc: (C.chiefs.length - 1) + ' commanders from 1963 to 2025, and the serving Chief who gives this hall its name.' },
-      { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to the tri-service AFCSC: the home of this Hall of Fame.' },
-      { key: 'daw', img: C.chronicles.daw.hero, desc: 'How airpower is taught to the commanders of Nigeria and her allies.' },
-      { key: 'fleet', img: (C.aircraft[C.aircraft.length - 2] || {}).photo, desc: 'Tap a base on the map of Nigeria. Browse every aircraft that has worn the roundel.' },
-      { key: 'connect', img: '', map: true, desc: 'Your state, your birth year, or a Chief you know. Every Nigerian has a place in this story.' },
-      { key: 'archive', img: '', collage: true, desc: plural(nPhotos, 'photograph') + ' from the archive in one place. Tap any picture to see where it belongs.' }
+    var intro = filmById('intro');
+    var rows = [
+      { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: C.events.length + ' recorded moments from 1961 to today, decade by decade and year by year.' },
+      { key: 'chiefs', img: chiefByNo(C.chiefs.length).photo, desc: 'All ' + C.chiefs.length + ' heads of the service, their tenures drawn to scale, and the story of each.' },
+      { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College at Jaji.' },
+      { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
+      { key: 'fleet', img: (C.aircraft[C.aircraft.length - 2] || {}).photo, desc: C.bases.length + ' bases on the map of Nigeria and ' + C.aircraft.length + ' aircraft types, 1964 to today.' },
+      { key: 'connect', map: true, desc: 'Your home state, your birth year or a Chief you remember: find your place in the story.' },
+      { key: 'archive', collage: true, desc: ARCHIVE.length + ' photographs in one place, each linked to the moment it records.' }
     ];
     var nVisited = EXPLORE_KEYS.filter(function (k) { return state.visited[k]; }).length;
-    var progress = nVisited === 0 ? EXPLORE_KEYS.length + ' stories to explore' : nVisited === EXPLORE_KEYS.length ? 'All ' + EXPLORE_KEYS.length + ' stories explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' stories explored';
-    var collage = shuffle(ARCHIVE.filter(function (a) { return a.group === 'timeline'; })).slice(0, 6);
+    var collage = shuffle(ARCHIVE.filter(function (a) { return a.group === 'timeline'; })).slice(0, 4);
+    var lights = EXPLORE_KEYS.map(function (k) { return '<span class="progress-light' + (state.visited[k] ? ' is-on' : '') + '"></span>'; }).join('');
 
     return '' +
       '<div class="home">' +
-        '<div class="home-intro">' +
-          '<div class="eyebrow">' + esc(C.meta.kicker) + '</div>' +
-          '<h1 class="home-title">Air Marshal S.K. Aneke<br/>Hall of Fame</h1>' +
-          '<div class="home-sub">' + esc(C.meta.subtitle) + '</div>' +
-          '<p class="home-tagline">' + esc(C.meta.tagline) + '</p>' +
-          '<div class="home-stats">' +
-            stat('1964', 'Established') + stat(String(C.chiefs.length), 'Commanders & Chiefs') + stat(String(C.events.length), 'Recorded moments') + stat(String(C.aircraft.length), 'Aircraft types') +
-          '</div>' +
+        (intro ? '<video class="home-video" muted loop playsinline autoplay src="' + esc(intro.src) + '"></video>' : '') +
+        '<div class="home-shade"></div>' +
+        '<div class="home-left">' +
+          '<header class="masthead masthead--home"><div class="masthead-kicker">Welcome to the Hall of Fame</div>' +
+            '<h1 class="masthead-title">Explore the history</h1>' +
+            '<p class="masthead-lede">' + esc(C.meta.tagline) + ' Choose a chapter, or begin with the film.</p></header>' +
+          (intro ? '<button class="home-film" data-act="film" data-arg="intro">' +
+            '<span class="home-film-play">' + ICON.play + '</span>' +
+            '<span class="home-film-text"><span class="eyebrow">Start here' + (intro.duration ? ' · ' + esc(intro.duration) : '') + '</span><span class="home-film-title">' + esc(intro.title) + '</span></span>' +
+            '<span class="home-film-more" data-act="go" data-arg="films">All ' + C.films.length + ' films ' + ICON.next + '</span>' +
+          '</button>' : '') +
           '<div class="home-fact" id="home-fact"></div>' +
-          '<div class="home-progress">' +
-            '<div class="home-progress-dots">' + EXPLORE_KEYS.map(function (k) { return '<span class="dot' + (state.visited[k] ? ' dot--on' : '') + '"></span>'; }).join('') + '</div>' +
-            '<span>' + esc(progress) + '</span>' +
-          '</div>' +
+          '<div class="home-progress"><div class="progress-lights">' + lights + '</div>' +
+            '<span>' + (nVisited === 0 ? EXPLORE_KEYS.length + ' chapters to explore' : nVisited === EXPLORE_KEYS.length ? 'Every chapter explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' chapters explored') + '</span></div>' +
         '</div>' +
-        '<nav class="home-grid">' + tiles.map(function (t, i) {
-          var s = SECTIONS[t.key];
-          var visited = t.key === 'films' ? (Object.keys(state.watched).length ? Object.keys(state.watched).length + ' of ' + C.films.length + ' watched' : '') : (state.visited[t.key] ? 'Visited' : '');
-          var media = t.map ? '<div class="tile-map">' + nigeriaSvg([], null, true) + '</div>'
-            : t.collage ? '<div class="tile-collage">' + collage.map(function (a) { return frame(a.src, 'tile-collage-cell'); }).join('') + '</div>'
-            : frame(t.img, 'tile-img');
-          return '<button class="tile' + (t.feature ? ' tile--feature' : '') + '" data-act="go" data-arg="' + t.key + '" style="animation-delay:' + (i * 60) + 'ms">' +
-            media + '<span class="tile-shade"></span>' +
-            (t.feature ? '<span class="tile-play">' + ICON.play + '</span>' : '') +
-            '<span class="tile-body">' +
-              '<span class="tile-num">' + esc(s.num) + '</span>' +
-              '<span class="tile-title">' + esc(s.title) + '</span>' +
-              '<span class="tile-desc">' + esc(t.desc) + '</span>' +
-            '</span>' +
-            (visited ? '<span class="tile-visited">' + ICON.check + esc(visited) + '</span>' : '') +
+        '<nav class="contents">' + rows.map(function (r, i) {
+          var sec = SECTIONS[r.key];
+          var thumb = r.map ? '<span class="contents-thumb contents-thumb--map">' + nigeriaSvg([], null, true) + '</span>'
+            : r.collage ? '<span class="contents-thumb contents-thumb--collage">' + collage.map(function (a) { return frame(a.src, 'contents-cell'); }).join('') + '</span>'
+            : frame(r.img, 'contents-thumb');
+          return '<button class="contents-row' + (state.visited[r.key] ? ' is-visited' : '') + '" data-act="go" data-arg="' + r.key + '" style="animation-delay:' + (i * 70) + 'ms">' +
+            '<span class="contents-n">' + esc(sec.n) + '</span>' +
+            '<span class="contents-text"><span class="contents-title">' + esc(sec.nav === 'Your link' ? 'Find your connection' : r.key === 'chiefs' ? 'Chiefs of the Air Staff' : r.key === 'college' ? 'The College, Jaji' : r.key === 'daw' ? 'Department of Air Warfare' : r.key === 'timeline' ? 'History of the Nigerian Air Force' : r.key === 'archive' ? 'Photograph archive' : sec.nav) + '</span>' +
+              '<span class="contents-desc">' + esc(r.desc) + '</span></span>' +
+            thumb +
+            '<span class="contents-go">' + (state.visited[r.key] ? ICON.check : ICON.next) + '</span>' +
           '</button>';
         }).join('') + '</nav>' +
       '</div>';
   };
-  function stat(n, label) { return '<div class="stat"><span class="stat-n">' + esc(n) + '</span><span class="stat-l">' + esc(label) + '</span></div>'; }
+  AFTER.home = function (root) {
+    var v = root.querySelector('.home-video');
+    if (!v) return;
+    v.addEventListener('error', function () { v.classList.add('hidden'); });
+    var p = v.play(); if (p && p.catch) p.catch(function () {});
+  };
 
   function startHomeFacts() {
     stopHomeFacts();
@@ -521,7 +528,8 @@
       setTimeout(function () {
         node.innerHTML = '<button class="home-fact-btn" data-act="year" data-arg="' + e.year + '">' +
           frame(e.photos[0], 'home-fact-img') +
-          '<span class="home-fact-text"><span class="eyebrow">From the archive · ' + esc(e.date) + '</span><span class="home-fact-title">' + esc(e.title) + '</span><span class="home-fact-cta">Read the story ' + ICON.next + '</span></span>' +
+          '<span class="home-fact-text"><span class="eyebrow">From the archive</span><span class="home-fact-date">' + esc(e.date) + '</span><span class="home-fact-title">' + esc(e.title) + '</span></span>' +
+          '<span class="home-fact-progress"></span>' +
         '</button>';
         node.classList.add('on');
       }, 400);
@@ -542,25 +550,23 @@
     var ruler = '';
     for (var y = YEAR_FIRST; y <= YEAR_LAST; y++) {
       var n = countsByYear[y] || 0, di = decadeOf(y);
-      var cls = 'ruler-year' + (n ? ' has-events' : '') + (state.year === y ? ' is-on' : '') + (di === state.decade ? ' in-decade' : '');
+      var cls = 'sky-year' + (n ? ' has-events' : '') + (state.year === y ? ' is-on' : '') + (di === state.decade ? ' in-decade' : '');
       ruler += '<button class="' + cls + '"' + (n ? ' data-act="year" data-arg="' + y + '"' : '') + ' style="width:' + YEAR_W + 'px">' +
-        (C.decades[di] && C.decades[di].from === y ? '<span class="ruler-decade">' + esc(C.decades[di].title) + '</span>' : '') +
-        '<span class="ruler-label">' + y + '</span>' +
-        '<span class="ruler-dot" style="--n:' + Math.min(n, 8) + '"></span>' +
-        (n ? '<span class="ruler-count">' + plural(n, 'moment') + '</span>' : '') +
+        (C.decades[di] && C.decades[di].from === y ? '<span class="sky-decade">' + esc(C.decades[di].title) + '</span>' : '') +
+        (n ? '<span class="sky-count">' + n + '</span>' : '') +
+        '<span class="sky-bar" style="height:' + (n ? Math.min(64, 10 + n * 6) : 3) + 'px"></span>' +
+        '<span class="sky-label">' + y + '</span>' +
       '</button>';
     }
 
     var body = state.year == null ? timelineDecadeBody(d) : timelineYearBody(state.year);
     return '' +
       '<div class="timeline">' +
-        '<div class="timeline-head">' +
-          '<div class="section-heading"><span class="section-num">I</span><h2 class="section-title">History of the Nigerian Air Force</h2></div>' +
+        '<div class="timeline-head">' + masthead('timeline', null, 'masthead--compact') +
           '<div class="decade-chips">' + chips + '</div>' +
         '</div>' +
         '<div class="ruler-wrap">' +
           '<div class="ruler" data-scroll="x" id="ruler"><div class="ruler-track" style="padding:0 ' + (STAGE_W / 2 - YEAR_W / 2) + 'px">' + ruler + '</div></div>' +
-          '<div class="ruler-hint">Sweep to travel · Tap a year</div>' +
         '</div>' +
         '<div class="timeline-body">' + body + '</div>' +
       '</div>';
@@ -668,11 +674,8 @@
   RENDER.films = function () {
     return '' +
       '<div class="films">' +
-        '<div class="section-head">' +
-          '<div class="section-heading"><span class="section-num">Films</span><h2 class="section-title">Watch the story</h2></div>' +
-          '<p class="section-intro">Short films from the archive. Tap any film to play it full screen; every film ends with a path into the written history.' +
-            (C.films.some(filmSoon) ? ' Films marked “Coming soon” are being added to the Hall of Fame.' : '') + '</p>' +
-        '</div>' +
+        masthead('films', C.films.length + ' short films, from the first cadets to the sixtieth anniversary. Each plays full screen and ends with a way into the written history.' +
+            (C.films.some(filmSoon) ? ' Films marked “Coming soon” are still being added.' : '')) +
         '<div class="film-grid">' + C.films.map(function (f, i) {
           var soon = filmSoon(f);
           return '<button class="film-card' + (i === 0 ? ' film-card--lead' : '') + (soon ? ' is-soon' : '') + '" data-act="film" data-arg="' + f.id + '">' +
@@ -704,11 +707,8 @@
     var aneke = filmById('lineage');
     return '' +
       '<div class="chiefs">' +
-        '<div class="section-head section-head--row">' +
-          '<div>' +
-            '<div class="section-heading"><span class="section-num">II</span><h2 class="section-title">Past Chiefs of the Air Staff</h2></div>' +
-            '<p class="section-intro">Twenty-two commanders from 1963 to 2025, and the serving Chief. Each band below is one tenure, drawn to scale. Sweep the gallery to travel through time; tap a Chief to learn his story.</p>' +
-          '</div>' +
+        '<div class="page-head">' +
+          masthead('chiefs', 'Two German commanders, then ' + (C.chiefs.length - 2) + ' Nigerian Chiefs of the Air Staff from 1966 to today. The bar below draws every tenure to scale; the gallery runs in order of appointment.') +
           (aneke ? filmButton(aneke) : '') +
         '</div>' +
         '<div class="lineage"><div class="lineage-bar">' + segs + '</div><div class="lineage-axis">' + ticks + '</div></div>' +
@@ -746,6 +746,7 @@
     if (c.state) meta.push(['State of origin', c.state]);
     return '' +
       '<div class="chief">' +
+        (c.photo ? '<div class="chief-bg" style="background-image:url(&quot;' + esc(c.photo) + '&quot;)"></div>' : '') +
         '<div class="chief-left">' +
           '<button class="chief-portrait"' + zoomAttrs('chief', 0) + '>' + frame(c.photo, 'chief-portrait-frame', initials(c.name)) + '</button>' +
           '<div class="chief-ordinal">' + esc(chiefLabel(c)) + '</div>' +
@@ -756,8 +757,8 @@
           '</div>' +
         '</div>' +
         '<div class="chief-right" data-scroll="y">' +
-          '<div class="eyebrow">' + esc(c.rank) + '</div>' +
-          '<h2 class="chief-name">' + esc(c.name) + '</h2>' +
+          '<header class="masthead"><div class="masthead-kicker">' + esc(chiefLabel(c)) + '</div>' +
+          '<h2 class="chief-name">' + esc(c.name) + '</h2></header>' +
           '<div class="chief-meta">' + meta.map(function (m) { return '<div class="meta"><span class="meta-k">' + esc(m[0]) + '</span><span class="meta-v">' + esc(m[1]) + '</span></div>'; }).join('') + '</div>' +
           paras(c.bio, 'body-text body-text--lead') +
           (c.achievements && c.achievements.length ? '<h3 class="sub-head">Notable in office</h3><ul class="ach">' + c.achievements.map(function (x) { return '<li>' + ICON.star + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>' : '') +
@@ -774,7 +775,7 @@
   }
 
   // ---------- Chronicles: the College and the Department of Air Warfare ----------
-  function renderChronicle(key, num) {
+  function renderChronicle(key) {
     var ch = C.chronicles[key];
     var f = C.films.filter(function (x) { return x.section === 'college'; })[0];
     var lk = 'chron-' + key;
@@ -800,10 +801,7 @@
     return '' +
       '<div class="chron">' +
         '<div class="chron-left">' +
-          '<div class="section-heading"><span class="section-num">' + num + '</span></div>' +
-          '<div class="eyebrow">' + esc(ch.eyebrow) + '</div>' +
-          '<h2 class="chron-heading">' + esc(ch.title) + '</h2>' +
-          '<p class="section-intro">' + esc(ch.intro) + '</p>' +
+          masthead(key, ch.intro) +
           (ch.hero ? '<button class="chron-hero"' + zoomAttrs(lk, 0) + '>' + frame(ch.hero, 'chron-hero-frame') + '<span class="chron-hero-cap">' + esc(ch.heroCaption || '') + '</span></button>' : '') +
           '<div class="chron-foot">' +
             '<span class="chron-count">' + plural(ch.items.length, 'milestone') + ' · ' + esc(ch.items[0].date) + ' – ' + esc(ch.items[ch.items.length - 1].date) + '</span>' +
@@ -814,8 +812,8 @@
         '<div class="chron-right" data-scroll="y"><div class="chron-spine"></div>' + items + '<div class="chron-end">' + ICON.plane + '</div></div>' +
       '</div>';
   }
-  RENDER.college = function () { return renderChronicle('college', 'III'); };
-  RENDER.daw = function () { return renderChronicle('daw', 'IV'); };
+  RENDER.college = function () { return renderChronicle('college'); };
+  RENDER.daw = function () { return renderChronicle('daw'); };
 
   // ---------- Fleet & Bases ----------
   function project(lon, lat) { return [40 + (lon - 2.5) * 75, 40 + (13.95 - lat) * 75]; }
@@ -838,9 +836,10 @@
     var tabs = '<div class="tabs">' +
       '<button class="tab' + (state.fleetTab === 'bases' ? ' is-on' : '') + '" data-act="fleet-tab" data-arg="bases">' + ICON.pin + 'Bases</button>' +
       '<button class="tab' + (state.fleetTab === 'aircraft' ? ' is-on' : '') + '" data-act="fleet-tab" data-arg="aircraft">' + ICON.plane + 'Aircraft</button></div>';
-    var head = '<div class="section-head section-head--row">' +
-      '<div><div class="section-heading"><span class="section-num">V</span><h2 class="section-title">Fleet &amp; Bases</h2></div>' +
-      '<p class="section-intro">Tap a base on the map of Nigeria, or browse the aircraft that have worn the green-and-white roundel. Six Commands: Tactical Air (Makurdi), Special Operations (Bauchi), Mobility (Yenagoa), Air Training (Kaduna), Ground Training (Enugu) and Logistics (Lagos).</p></div>' +
+    var head = '<div class="page-head">' +
+      masthead('fleet', state.fleetTab === 'bases'
+        ? 'The service is organised in six Commands: Tactical Air at Makurdi, Special Operations at Bauchi, Mobility at Yenagoa, Air Training at Kaduna, Ground Training at Enugu and Logistics at Lagos. Tap a pin to visit a base.'
+        : C.aircraft.length + ' aircraft types in the order they joined the service, from the Dornier Do-27 of 1964 onwards. Tap one for its story.') +
       tabs + '</div>';
     return '<div class="fleet">' + head + (state.fleetTab === 'bases' ? fleetBases() : fleetAircraft()) + '</div>';
   };
@@ -890,18 +889,17 @@
 
   // ---------- Find your connection ----------
   RENDER.connect = function () {
-    var head = '<div class="section-heading"><span class="section-num">VI</span><h2 class="section-title">Find your connection</h2></div>';
+    var head = masthead('connect', state.cmode ? null : 'Start with something you already know. The Hall of Fame will show you the Chiefs, the bases and the moments that connect to it.', state.cmode ? 'masthead--compact' : '');
     if (!state.cmode) {
       var tiles = [
-        { mode: 'state', glyph: '36+1', title: 'Your state', desc: 'Pick the state you call home. See the Chiefs who came from there, the bases on its soil and the events that happened there.', cta: 'Choose a state' },
-        { mode: 'year', glyph: '19xx', title: 'Your birth year', desc: 'Find out who commanded the Air Force the year you were born, and what it was doing.', cta: 'Choose a year' },
-        { mode: 'chief', glyph: 'CAS', title: 'A Chief you know', desc: 'Choose a Chief of the Air Staff and see everything that happened under his command.', cta: 'Choose a Chief' }
+        { mode: 'state', icon: ICON.pin, title: 'My home state', desc: 'Which Chiefs of the Air Staff came from your state, which bases stand on its soil and what happened there.', cta: 'Pick a state', n: (C.states.length - 1) + ' states and the FCT' },
+        { mode: 'year', icon: ICON.cal, title: 'The year I was born', desc: 'Who commanded the Air Force in your birth year, how old the service was and what it was doing.', cta: 'Pick a year', n: '1930 to 2020' },
+        { mode: 'chief', icon: ICON.person, title: 'A Chief I remember', desc: 'Everything the archive records from the years one Chief of the Air Staff was in command.', cta: 'Pick a Chief', n: C.chiefs.length + ' Commanders and Chiefs' }
       ];
       return '<div class="connect">' + head +
-        '<p class="section-intro connect-intro">Every Nigerian has a place in this story. Start with something you know.</p>' +
         '<div class="connect-tiles">' + tiles.map(function (t, i) {
           return '<button class="connect-tile" data-act="cmode" data-arg="' + t.mode + '" style="animation-delay:' + (i * 80) + 'ms">' +
-            '<span class="connect-glyph">' + esc(t.glyph) + '</span><span class="connect-title">' + esc(t.title) + '</span>' +
+            '<span class="connect-icon">' + t.icon + '</span><span class="connect-n">' + esc(t.n) + '</span><span class="connect-title">' + esc(t.title) + '</span>' +
             '<span class="connect-desc">' + esc(t.desc) + '</span><span class="connect-cta">' + esc(t.cta) + ICON.next + '</span></button>';
         }).join('') + '</div></div>';
     }
@@ -1000,10 +998,9 @@
     lists.archive = items;
     return '' +
       '<div class="archive">' +
-        '<div class="section-head section-head--row">' +
-          '<div><div class="section-heading"><span class="section-num">VII</span><h2 class="section-title">Photo archive</h2></div>' +
-          '<p class="section-intro">Every photograph in the Hall of Fame. Tap a picture to view it full screen, read its caption and jump to the story it belongs to.</p></div>' +
-          '<div class="archive-count"><span class="stat-n">' + items.length + '</span><span class="stat-l">photographs</span></div>' +
+        '<div class="page-head">' +
+          masthead('archive', 'Every photograph in the Hall of Fame. Tap one to see it full screen, read what it shows and go to the story it belongs to.') +
+          '<div class="figure figure--right"><span class="figure-n">' + items.length + '</span><span class="figure-l">photographs</span></div>' +
         '</div>' +
         '<div class="era-chips">' + ARCHIVE_GROUPS.map(function (g) {
           var n = g.key === 'all' ? ARCHIVE.length : ARCHIVE.filter(function (a) { return a.group === g.key; }).length;
@@ -1244,7 +1241,7 @@
   function init() {
     el.stage = $('stage');
     el.topbar = $('topbar');
-    el.crumb = $('crumb');
+    el.chapters = $('chapters');
     el.back = $('btn-back');
     el.sound = $('btn-sound');
     el.lightbox = $('lightbox');

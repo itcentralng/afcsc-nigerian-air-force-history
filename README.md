@@ -21,12 +21,15 @@ The content was extracted from the earlier web prototype at
   today's date). A row of runway approach lights leads to "Touch anywhere to
   begin". If the film is missing, a slow slideshow of archive photographs
   plays instead. Any touch begins.
-- **Home**: eight stories as picture tiles, the key numbers, a rotating archive
-  moment that opens its year, and a progress line showing what the visitor has
-  explored.
-- **I · History of the Nigerian Air Force**: six decades as chips, and a
-  1961–2026 year ruler you sweep with a finger (dot size shows how much
-  happened). A decade shows its summary, its films and every year with events;
+- **Home**: a contents page over the intro film: "Explore the history",
+  a "Start here" film, a rotating archive moment and a row of lights showing
+  which chapters have been visited, beside the seven numbered chapters with
+  thumbnails.
+- **Top bar**: both crests and the Hall of Fame name (tap for Home), the
+  chapter navigation with the current chapter underlined and visited ones
+  marked, then Back, larger text and Reach.
+- **01 · Timeline**: six decades as tabs, and a 1961–2026 skyline of bars
+  you sweep with a finger (bar height shows how much happened). A decade shows its summary, its films and every year with events;
   a year shows the Chief of the Air Staff at the time, each event with its
   photographs, and the film that tells it.
 - **Films**: seven short films in a full-screen player with scrubbing,
@@ -34,17 +37,17 @@ The content was extracted from the earlier web prototype at
   yet copied to `assets/video/` shows as "Coming soon" (see
   `assets/video/README.txt` for the file names); it appears automatically once
   the file is in place.
-- **II · Past Chiefs of the Air Staff**: every tenure drawn to scale on a
+- **02 · Chiefs of the Air Staff**: every tenure drawn to scale on a
   1963–today ribbon, and a portrait gallery to sweep through. Each Chief has a
   biography page: tenure, time in office, birth, state of origin, notable
   achievements, sources, and everything that happened under his command.
-- **III · History of the College** and **IV · Department of Air Warfare**:
+- **03 · The College** and **04 · Air Warfare**:
   illustrated chronicles along a vertical spine, linked to each other.
-- **V · Fleet & Bases**: a map of Nigeria with 20 bases (tap a pin or a name)
+- **05 · Fleet & Bases**: a map of Nigeria with 20 bases (tap a pin or a name)
   and an aircraft hangar of 20 types, filterable by decade of entry.
-- **VI · Find your connection**: pick your state, your birth year (decade,
+- **06 · Find your connection**: pick your state, your birth year (decade,
   then year) or a Chief, and see the Chiefs, bases and moments connected to it.
-- **VII · Photo archive**: all 242 photographs in one grid, filterable by
+- **07 · Photograph archive**: all 242 photographs in one grid, filterable by
   collection, each opening full screen with its caption and a link to its story.
 
 Every photograph opens in the photo viewer (swipe or use the arrows; tap

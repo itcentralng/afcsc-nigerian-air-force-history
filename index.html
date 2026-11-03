@@ -23,29 +23,24 @@
 
       <!-- ============ PERSISTENT TOP BAR ============ -->
       <header class="topbar hidden" id="topbar">
-        <div class="topbar-left">
-          <button class="icon-btn" data-act="home" aria-label="Home">
-            <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9" /><path d="M9.5 20v-6h5v6" /></svg>
-          </button>
+        <button class="topbar-brand" data-act="home" aria-label="Home">
+          <img class="topbar-crest" src="assets/icons/naf.png" alt="" />
+          <img class="topbar-crest" src="assets/icons/afcsc.png" alt="" />
+          <span class="topbar-text">
+            <span class="topbar-kicker">Air Marshal S.K. Aneke</span>
+            <span class="topbar-title">Hall of Fame</span>
+          </span>
+        </button>
+        <nav class="chapters" id="chapters" aria-label="Chapters"></nav>
+        <div class="topbar-right">
           <button class="icon-btn" data-act="back" aria-label="Back" id="btn-back">
             <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
           </button>
-          <nav class="crumb" id="crumb"></nav>
-        </div>
-        <div class="topbar-brand">
-          <img class="topbar-crest" src="assets/icons/naf.png" alt="" />
-          <div class="topbar-text">
-            <span class="topbar-kicker">Nigerian Air Force · Our History</span>
-            <span class="topbar-title">Air Marshal S.K. Aneke Hall of Fame</span>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <button class="pill-btn" data-act="toggle-big" id="btn-big" aria-pressed="false" title="Larger text">
-            <span class="pill-a">A</span><span class="pill-a pill-a--big">A</span>
+          <button class="icon-btn" data-act="toggle-big" id="btn-big" aria-pressed="false" aria-label="Larger text">
+            <svg viewBox="0 0 24 24"><path d="M3 18 7.5 6 12 18M4.7 14h5.6"/><path d="M14 18l3.5-9 3.5 9M15.2 15.2h4.6"/></svg>
           </button>
-          <button class="pill-btn" data-act="toggle-reach" id="btn-reach" aria-pressed="false" title="Move the controls to the bottom of the screen">
+          <button class="icon-btn" data-act="toggle-reach" id="btn-reach" aria-pressed="false" aria-label="Move the controls to the bottom of the screen">
             <svg viewBox="0 0 24 24"><path d="M12 4v13"/><path d="m6.5 11.5 5.5 5.5 5.5-5.5"/><path d="M5 20.5h14"/></svg>
-            <span>Reach</span>
           </button>
           <button class="icon-btn hidden" data-act="toggle-sound" id="btn-sound" aria-label="Mute background music">
             <svg class="icon-sound-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
