@@ -330,7 +330,8 @@
     var id = state.screen;
     Object.keys(el.screens).forEach(function (k) { el.screens[k].classList.toggle('active', k === id); });
     el.topbar.classList.toggle('hidden', id === 'attract');
-    el.back.classList.toggle('invisible', id === 'home');
+    el.back.classList.toggle('hidden', id === 'home');
+    $('btn-home').classList.toggle('is-here', id === 'home');
     lists = {};
     var r = RENDER[id];
     if (r) {
@@ -1176,7 +1177,7 @@
     el.stage.classList.toggle('big', state.big);
     el.stage.classList.toggle('reach', state.reach);
     $('btn-big').setAttribute('aria-pressed', String(state.big));
-    $('btn-reach').setAttribute('aria-pressed', String(state.reach));
+    if ($('btn-reach')) $('btn-reach').setAttribute('aria-pressed', String(state.reach));
   }
 
   // ============================================================
@@ -1225,6 +1226,7 @@
     'toggle-big': function () { state.big = !state.big; applyPrefs(); },
     'toggle-reach': function () { state.reach = !state.reach; applyPrefs(); },
     'toggle-sound': toggleSound,
+    'close-app': function () { window.close(); },
     'idle-stay': function () { touched(); }
   };
 

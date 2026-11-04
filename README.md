@@ -27,7 +27,8 @@ The content was extracted from the earlier web prototype at
   thumbnails.
 - **Top bar**: both crests and the Hall of Fame name (tap for Home), the
   chapter navigation with the current chapter underlined and visited ones
-  marked, then Back, larger text and Reach.
+  marked, then a labelled **Home** button, Back, larger text and a small
+  **✕** that closes the kiosk window (as in the Timbuktu Triangle app).
 - **01 · Timeline**: six decades as tabs, and a 1961–2026 skyline of bars
   you sweep with a finger (bar height shows how much happened). A decade shows its summary, its films and every year with events;
   a year shows the Chief of the Air Staff at the time, each event with its
@@ -53,8 +54,10 @@ The content was extracted from the earlier web prototype at
 Every photograph opens in the photo viewer (swipe or use the arrows; tap
 "Read the story" to jump to where it belongs).
 
-**Accessibility**: the **A A** button enlarges body text; **Reach** moves the
-top bar to the bottom of the screen for children and wheelchair users.
+**Accessibility**: the **A A** button enlarges body text. A **Reach** mode,
+which moves the top bar to the bottom of the screen for children and
+wheelchair users, is built in but its button is commented out in
+`index.html` for now; uncomment it to bring it back.
 
 After 90 seconds without a touch a "Still exploring?" prompt counts down
 10 seconds, then the kiosk resets to the welcome screen (it waits while a film
