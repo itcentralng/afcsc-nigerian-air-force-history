@@ -12,6 +12,23 @@ as the Timbuktu Triangle, Our Leaders and Directorate of Procurement kiosks.
 The content was extracted from the earlier web prototype at
 <https://aneke-hall-of-fame.netlify.app> and rebuilt here.
 
+## Four main sections
+
+The Hall of Fame is built around four sections, and only these appear on Home
+and in the top bar:
+
+1. **History of the Nigerian Air Force** (the timeline)
+2. **Past Chiefs of the Air Staff**
+3. **History of the College**
+4. **History of the Department of Air Warfare**
+
+The films play from inside these sections (each year's films on the timeline,
+the lineage film with the Chiefs, the Jaji film with the College and the
+Department) and the intro film plays on the welcome and Home screens. The
+Films, Fleet & Bases, Find your connection and Photo archive screens below
+are still in the code but nothing links to them; to bring one back, add its
+key to `EXPLORE_KEYS` near the top of `script.js`.
+
 ## Screens
 
 - **Welcome**: the intro film plays full screen behind a left-aligned title

@@ -24,10 +24,10 @@
   // Chapter titles, navigation labels and standfirsts for each screen.
   var SECTIONS = {
     films:    { n: '', nav: 'Films', kicker: 'Watch', title: 'The story on film' },
-    timeline: { n: '01', nav: 'Timeline', kicker: 'Chapter 01 · The Nigerian Air Force, year by year', title: 'Six decades of service' },
-    chiefs:   { n: '02', nav: 'The Chiefs', kicker: 'Chapter 02 · Chiefs of the Air Staff', title: 'The officers who led the service' },
-    college:  { n: '03', nav: 'The College', kicker: 'Chapter 03 · AFCSC Jaji', title: 'History of the College' },
-    daw:      { n: '04', nav: 'Air Warfare', kicker: 'Chapter 04 · Department of Air Warfare', title: 'Teaching airpower' },
+    timeline: { n: '01', nav: 'Nigerian Air Force', name: 'History of the Nigerian Air Force', kicker: '01 · History of the Nigerian Air Force', title: 'Six decades of service' },
+    chiefs:   { n: '02', nav: 'Past Chiefs', name: 'Past Chiefs of the Air Staff', kicker: '02 · Past Chiefs of the Air Staff', title: 'The officers who led the service' },
+    college:  { n: '03', nav: 'The College', name: 'History of the College', kicker: '03 · History of the College', title: 'Armed Forces Command and Staff College, Jaji' },
+    daw:      { n: '04', nav: 'Air Warfare', name: 'History of the Department of Air Warfare', kicker: '04 · History of the Department of Air Warfare', title: 'Teaching airpower' },
     fleet:    { n: '05', nav: 'Fleet & Bases', kicker: 'Chapter 05 · Fleet and bases', title: 'Where the Air Force flies, and what it flies' },
     connect:  { n: '06', nav: 'Your link', kicker: 'Chapter 06 · Your connection', title: 'Where do you fit in the story?' },
     archive:  { n: '07', nav: 'Archive', kicker: 'Chapter 07 · Photograph archive', title: 'The archive' }
@@ -38,7 +38,11 @@
     return '<header class="masthead ' + (extraClass || '') + '"><div class="masthead-kicker">' + esc(sec.kicker) + '</div>' +
       '<h2 class="masthead-title">' + esc(sec.title) + '</h2>' + (lede ? '<p class="masthead-lede">' + esc(lede) + '</p>' : '') + '</header>';
   }
-  var EXPLORE_KEYS = ['films', 'timeline', 'chiefs', 'college', 'daw', 'fleet', 'connect', 'archive'];
+  // The four main sections the Hall of Fame is built around. These are the
+  // only ones in the navigation and on Home. The films play from inside them.
+  // The extra screens (films, fleet, connect, archive) are still in the code
+  // but nothing links to them; add a key here to bring one back.
+  var EXPLORE_KEYS = ['timeline', 'chiefs', 'college', 'daw'];
 
   var state = {
     screen: 'attract',
@@ -402,7 +406,7 @@
             figure(String(years), 'years of service') +
             figure(String(C.chiefs.length), 'Commanders &amp; Chiefs') +
             figure(String(C.events.length), 'recorded moments') +
-            figure(String(C.bases.length), 'bases on the map') +
+            figure(String(now.getFullYear() - 1976), 'years of the College') +
           '</div>' +
         '</div>' +
 
@@ -472,9 +476,6 @@
       { key: 'chiefs', img: chiefByNo(C.chiefs.length).photo, desc: 'All ' + C.chiefs.length + ' heads of the service, their tenures drawn to scale, and the story of each.' },
       { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College at Jaji.' },
       { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
-      { key: 'fleet', img: (C.aircraft[C.aircraft.length - 2] || {}).photo, desc: C.bases.length + ' bases on the map of Nigeria and ' + C.aircraft.length + ' aircraft types, 1964 to today.' },
-      { key: 'connect', map: true, desc: 'Your home state, your birth year or a Chief you remember: find your place in the story.' },
-      { key: 'archive', collage: true, desc: ARCHIVE.length + ' photographs in one place, each linked to the moment it records.' }
     ];
     var nVisited = EXPLORE_KEYS.filter(function (k) { return state.visited[k]; }).length;
     var collage = shuffle(ARCHIVE.filter(function (a) { return a.group === 'timeline'; })).slice(0, 4);
@@ -487,15 +488,14 @@
         '<div class="home-left">' +
           '<header class="masthead masthead--home"><div class="masthead-kicker">Welcome to the Hall of Fame</div>' +
             '<h1 class="masthead-title">Explore the history</h1>' +
-            '<p class="masthead-lede">' + esc(C.meta.tagline) + ' Choose a chapter, or begin with the film.</p></header>' +
+            '<p class="masthead-lede">' + esc(C.meta.tagline) + ' Choose one of the four sections, or begin with the film.</p></header>' +
           (intro ? '<button class="home-film" data-act="film" data-arg="intro">' +
             '<span class="home-film-play">' + ICON.play + '</span>' +
             '<span class="home-film-text"><span class="eyebrow">Start here' + (intro.duration ? ' · ' + esc(intro.duration) : '') + '</span><span class="home-film-title">' + esc(intro.title) + '</span></span>' +
-            '<span class="home-film-more" data-act="go" data-arg="films">All ' + C.films.length + ' films ' + ICON.next + '</span>' +
           '</button>' : '') +
           '<div class="home-fact" id="home-fact"></div>' +
           '<div class="home-progress"><div class="progress-lights">' + lights + '</div>' +
-            '<span>' + (nVisited === 0 ? EXPLORE_KEYS.length + ' chapters to explore' : nVisited === EXPLORE_KEYS.length ? 'Every chapter explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' chapters explored') + '</span></div>' +
+            '<span>' + (nVisited === 0 ? EXPLORE_KEYS.length + ' sections to explore' : nVisited === EXPLORE_KEYS.length ? 'All four sections explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' sections explored') + '</span></div>' +
         '</div>' +
         '<nav class="contents">' + rows.map(function (r, i) {
           var sec = SECTIONS[r.key];
@@ -504,7 +504,7 @@
             : frame(r.img, 'contents-thumb');
           return '<button class="contents-row' + (state.visited[r.key] ? ' is-visited' : '') + '" data-act="go" data-arg="' + r.key + '" style="animation-delay:' + (i * 70) + 'ms">' +
             '<span class="contents-n">' + esc(sec.n) + '</span>' +
-            '<span class="contents-text"><span class="contents-title">' + esc(sec.nav === 'Your link' ? 'Find your connection' : r.key === 'chiefs' ? 'Chiefs of the Air Staff' : r.key === 'college' ? 'The College, Jaji' : r.key === 'daw' ? 'Department of Air Warfare' : r.key === 'timeline' ? 'History of the Nigerian Air Force' : r.key === 'archive' ? 'Photograph archive' : sec.nav) + '</span>' +
+            '<span class="contents-text"><span class="contents-title">' + esc(sec.name || sec.nav) + '</span>' +
               '<span class="contents-desc">' + esc(r.desc) + '</span></span>' +
             thumb +
             '<span class="contents-go">' + (state.visited[r.key] ? ICON.check : ICON.next) + '</span>' +
