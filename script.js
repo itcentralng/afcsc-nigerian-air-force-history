@@ -330,13 +330,30 @@
     Object.assign(state, prev);
     show();
   }
+  // Where Back would go, in words, or null when that is just Home (the Home button covers it).
+  function backTarget() {
+    var s = state.screen;
+    if (s === 'timeline' && state.year != null) { var d = C.decades[state.decade]; return d.from + '–' + d.to; }
+    if (s === 'connect' && (state.cval != null || state.cmode)) return state.cval != null ? 'your choices' : 'Find your connection';
+    var prev = state.hist[state.hist.length - 1];
+    if (!prev || prev.screen === 'attract' || prev.screen === 'home') return null;
+    if (prev.screen === 'chief') return chiefByNo(prev.chief).shortName;
+    if (prev.screen === 'timeline' && prev.year != null) return String(prev.year);
+    var sec = SECTIONS[prev.screen];
+    return sec ? (sec.nav || sec.name) : 'previous page';
+  }
+  function renderBack() {
+    var label = state.screen === 'home' || state.screen === 'attract' ? null : backTarget();
+    el.back.classList.toggle('hidden', !label);
+    if (label) $('btn-back-label').textContent = label;
+  }
   function goHome() { state.hist = []; state.screen = 'home'; state.year = null; state.cmode = null; state.cval = null; show(); }
 
   function show() {
     var id = state.screen;
     Object.keys(el.screens).forEach(function (k) { el.screens[k].classList.toggle('active', k === id); });
     el.topbar.classList.toggle('hidden', id === 'attract');
-    el.back.classList.toggle('hidden', id === 'home');
+    renderBack();
     $('btn-home').classList.toggle('is-here', id === 'home');
     lists = {};
     var r = RENDER[id];

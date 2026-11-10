@@ -31,14 +31,17 @@
             <span class="topbar-title">Hall of Fame</span>
           </span>
         </button>
+        <!-- Labelled Back, on the left where visitors look first. It names where it
+             goes and only shows when that is somewhere other than Home. -->
+        <button class="back-btn hidden" data-act="back" id="btn-back">
+          <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
+          <span class="back-btn-text"><span class="back-btn-kicker">Back to</span><span class="back-btn-label" id="btn-back-label"></span></span>
+        </button>
         <nav class="chapters" id="chapters" aria-label="Chapters"></nav>
         <div class="topbar-right">
           <button class="home-btn" data-act="home" id="btn-home" aria-label="Home">
             <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9" /><path d="M9.5 20v-6h5v6" /></svg>
             <span>Home</span>
-          </button>
-          <button class="icon-btn" data-act="back" aria-label="Back" id="btn-back">
-            <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
           </button>
           <button class="icon-btn" data-act="toggle-big" id="btn-big" aria-pressed="false" aria-label="Larger text">
             <svg viewBox="0 0 24 24"><path d="M3 18 7.5 6 12 18M4.7 14h5.6"/><path d="M14 18l3.5-9 3.5 9M15.2 15.2h4.6"/></svg>

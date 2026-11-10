@@ -42,10 +42,11 @@ key to `EXPLORE_KEYS` near the top of `script.js`.
   a "Start here" film, a rotating archive moment and a row of lights showing
   which chapters have been visited, beside the seven numbered chapters with
   thumbnails.
-- **Top bar**: both crests and the Hall of Fame name (tap for Home), the
-  chapter navigation with the current chapter underlined and visited ones
-  marked, then a labelled **Home** button, Back, larger text and a small
-  **✕** that closes the kiosk window (as in the Timbuktu Triangle app).
+- **Top bar**: both crests and the Hall of Fame name (tap for Home); a gold
+  **Back** button that names where it goes ("Back to Past Chiefs", "Back to
+  1961–1971") and appears only when that is somewhere other than Home; the
+  section navigation; then a labelled **Home** button, larger text and a
+  small **✕** that closes the kiosk window (as in the Timbuktu Triangle app).
 - **01 · Timeline**: six decades as tabs, and a 1961–2026 skyline of bars
   you sweep with a finger (bar height shows how much happened). A decade shows its summary, its films and every year with events;
   a year shows the Chief of the Air Staff at the time, each event with its
