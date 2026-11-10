@@ -43,8 +43,10 @@ key to `EXPLORE_KEYS` near the top of `script.js`.
   which chapters have been visited, beside the seven numbered chapters with
   thumbnails.
 - **Top bar**: both crests and the Hall of Fame name (tap for Home); a gold
-  **Back** button that names where it goes ("Back to Past Chiefs", "Back to
-  1961–1971") and appears only when that is somewhere other than Home; the
+  **Back** button that retraces the visitor's own path one step at a time
+  (every page, year, decade and Chief they moved to) and names where it goes
+  ("Back to Past Chiefs", "Back to Emmanuel E. Ikwue", "Back to 1983"); it
+  appears only when that is somewhere other than Home; the
   section navigation; then a labelled **Home** button, larger text and a
   small **✕** that closes the kiosk window (as in the Timbuktu Triangle app).
 - **01 · Timeline**: six decades as tabs, and a 1961–2026 skyline of bars

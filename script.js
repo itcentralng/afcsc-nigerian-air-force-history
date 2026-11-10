@@ -313,6 +313,16 @@
   function snapshot() {
     return { screen: state.screen, decade: state.decade, year: state.year, chief: state.chief, fleetTab: state.fleetTab, base: state.base, era: state.era, cmode: state.cmode, cval: state.cval, archive: state.archive };
   }
+  // Every move a visitor makes, between screens or within one (a year, a
+  // decade, the next Chief), is a step in the history, so Back retraces
+  // exactly the path they took.
+  function step(patch) {
+    var before = JSON.stringify(snapshot());
+    var prev = snapshot();
+    Object.assign(state, patch);
+    if (JSON.stringify(snapshot()) !== before) state.hist.push(prev);
+    show();
+  }
   function go(screen, patch) {
     if (screen !== state.screen || patch) state.hist.push(snapshot());
     Object.assign(state, patch || {});
@@ -322,9 +332,6 @@
     show();
   }
   function goBack() {
-    if (state.screen === 'timeline' && state.year != null) { state.year = null; return show(); }
-    if (state.screen === 'connect' && state.cval != null) { state.cval = null; return show(); }
-    if (state.screen === 'connect' && state.cmode) { state.cmode = null; return show(); }
     var prev = state.hist.pop();
     if (!prev || prev.screen === 'attract') { state.hist = []; state.screen = 'home'; return show(); }
     Object.assign(state, prev);
@@ -332,13 +339,14 @@
   }
   // Where Back would go, in words, or null when that is just Home (the Home button covers it).
   function backTarget() {
-    var s = state.screen;
-    if (s === 'timeline' && state.year != null) { var d = C.decades[state.decade]; return d.from + '–' + d.to; }
-    if (s === 'connect' && (state.cval != null || state.cmode)) return state.cval != null ? 'your choices' : 'Find your connection';
     var prev = state.hist[state.hist.length - 1];
     if (!prev || prev.screen === 'attract' || prev.screen === 'home') return null;
     if (prev.screen === 'chief') return chiefByNo(prev.chief).shortName;
-    if (prev.screen === 'timeline' && prev.year != null) return String(prev.year);
+    if (prev.screen === 'timeline') {
+      if (prev.year != null) return String(prev.year);
+      var d = C.decades[prev.decade]; return d.from + '–' + d.to;
+    }
+    if (prev.screen === 'connect') return prev.cmode ? (prev.cval != null ? 'your result' : 'your choices') : 'Find your connection';
     var sec = SECTIONS[prev.screen];
     return sec ? (sec.nav || sec.name) : 'previous page';
   }
@@ -1142,7 +1150,7 @@
   function selectYear(y) {
     y = +y; if (!y) return;
     var patch = { year: y, decade: decadeOf(y) };
-    if (state.screen === 'timeline') { Object.assign(state, patch); state.visited.timeline = true; show(); }
+    if (state.screen === 'timeline') { state.visited.timeline = true; step(patch); }
     else go('timeline', patch);
   }
 
@@ -1207,27 +1215,27 @@
     home: goHome,
     back: goBack,
     go: function (arg) { var p = arg.split(':'); go(p[0], p[1] ? { fleetTab: p[1] } : (p[0] === 'timeline' ? { year: null } : null)); },
-    decade: function (arg) { state.decade = +arg; state.year = null; show(); },
+    decade: function (arg) { step({ decade: +arg, year: null }); },
     year: function (arg) { closeLightbox(); selectYear(arg); },
-    'year-clear': function () { state.year = null; show(); },
+    'year-clear': function () { step({ year: null }); },
     chief: function (arg) {
       if (!arg) return;
       closeLightbox();
-      if (state.screen === 'chief') { state.chief = +arg; show(); el.screens.chief.querySelector('.chief-right').scrollTop = 0; }
+      if (state.screen === 'chief') { step({ chief: +arg }); el.screens.chief.querySelector('.chief-right').scrollTop = 0; }
       else go('chief', { chief: +arg });
     },
-    'fleet-tab': function (arg) { state.fleetTab = arg; show(); },
+    'fleet-tab': function (arg) { step({ fleetTab: arg }); },
     base: function (arg) {
       closeLightbox();
-      if (state.screen === 'fleet') { state.base = arg; state.fleetTab = 'bases'; show(); }
+      if (state.screen === 'fleet') step({ base: arg, fleetTab: 'bases' });
       else go('fleet', { base: arg, fleetTab: 'bases' });
     },
-    era: function (arg) { state.era = arg; show(); },
-    cmode: function (arg) { state.cmode = arg; state.cval = null; show(); },
+    era: function (arg) { step({ era: arg }); },
+    cmode: function (arg) { step({ cmode: arg, cval: null }); },
     cdecade: function (arg) { state.cdecade = +arg; show(); },
-    cval: function (arg) { state.cval = state.cmode === 'state' ? arg : +arg; show(); },
-    creset: function () { state.cmode = null; state.cval = null; show(); },
-    archive: function (arg) { state.archive = arg; show(); },
+    cval: function (arg) { step({ cval: state.cmode === 'state' ? arg : +arg }); },
+    creset: function () { step({ cmode: null, cval: null }); },
+    archive: function (arg) { step({ archive: arg }); },
     zoom: function (arg) { var p = arg.split(':'); openLightbox(p[0], +p[1]); },
     'lightbox-close': closeLightbox,
     'lightbox-prev': function () { stepLightbox(-1); },
