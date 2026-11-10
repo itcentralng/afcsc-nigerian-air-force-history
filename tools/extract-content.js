@@ -37,7 +37,18 @@ for (let i = 0; i < lines.length; i++) {
 const out = {};
 vm.runInNewContext(src, { out });
 
-const paras = (s) => String(s || '').split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+const portraitFor = (c) => {
+  const name = String(c.n).padStart(2, '0') + '-' + String(c.short).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.jpg';
+  return fs.existsSync(path.join(root, 'assets/portraits', name)) ? 'assets/portraits/' + name : undefined;
+};
+// Typing slips in the source, corrected on the way out.
+const CORRECTIONS = [
+  [/401Flying/g, '401 Flying'],
+  [/School {2,}\(301 FTS\)/g, 'School (301 FTS)'],
+  [/Mikoyan-Hurevich/g, 'Mikoyan-Gurevich']
+];
+const fix = (s) => CORRECTIONS.reduce((t, [re, to]) => t.replace(re, to), s);
+const paras = (s) => fix(String(s || '')).split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 const clean = (o) => { Object.keys(o).forEach((k) => { if (o[k] === undefined || o[k] === '' || (Array.isArray(o[k]) && !o[k].length)) delete o[k]; }); return o; };
 
 const content = {
@@ -77,7 +88,9 @@ const content = {
     bio: paras(c.bio),
     achievements: c.ach || [],
     sources: c.src || [],
-    photo: c.img
+    photo: c.img,
+    // evenly cropped copy made by tools/crop-chief-portraits.py, when present
+    portrait: portraitFor(c)
   })),
 
   bases: out.BASES.map((b) => clean({

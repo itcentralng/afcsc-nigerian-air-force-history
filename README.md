@@ -114,7 +114,7 @@ Everything lives in `data/content.js` (`window.HOF_CONTENT`):
 | `meta` | Titles and tagline |
 | `decades` | `from`, `to`, `title`, `summary` for the six decade chips |
 | `events` | Timeline moments, oldest first: `year`, `date` (as displayed), `title`, `text` (paragraphs), `photos`, `caption` (for the first photo), optional `film` (a film `id`) and `state` (links it to *Find your connection*) |
-| `chiefs` | In order: `no`, `name`, `shortName`, `rank`, `from`/`to` (`YYYY-MM-DD`, `to: null` while serving), `born`, `died`, `state`, `serving`, `bio`, `achievements`, `sources`, `photo` |
+| `chiefs` | In order: `no`, `name`, `shortName`, `rank`, `from`/`to` (`YYYY-MM-DD`, `to: null` while serving), `born`, `died`, `state`, `serving`, `bio`, `achievements`, `sources`, `photo` (archive scan), `portrait` (even crop) |
 | `bases` | `id`, `city`, `state`, `lon`/`lat` (map position), `role`, `photo`, `caption`, `text`, optional `labelDx`/`labelDy` to nudge the map label |
 | `aircraft` | `name`, `origin`, `role`, `inService`, `note`, `photo`, `caption` |
 | `films` | `id`, `title`, `subtitle`, `src`, `description`, and `year` or `section` for the "Read the story" link |
@@ -130,6 +130,22 @@ a photo needs no code change.
 document for use as LLM context (facts and narrative only: no photos,
 captions, films or kiosk wording). Regenerate it after editing with
 `node tools/export-llm-context.js`.
+
+## Chief portraits
+
+The archive photos of the Chiefs vary a lot: some are tight head shots,
+others are framed certificates with the name printed underneath, and the
+early ones carry long captions. So every Chief also has an evenly cropped
+`portrait` in `assets/portraits/` (4:5, the face the same size and at the
+same height in each). The gallery, the Chief pages and the timeline cards use
+the portrait; the full-screen viewer and the timeline photos still show the
+whole original scan.
+
+To redo them (for example after replacing a photo), install Pillow and
+`opencv-python-headless` (version 4) and run
+`python3 tools/crop-chief-portraits.py`. It finds each face automatically;
+`OVERRIDES` in the script holds a hand-set face box for the three it
+misses, and `BOUNDS` keeps the crop clear of printed captions and borders.
 
 ## Source archive
 

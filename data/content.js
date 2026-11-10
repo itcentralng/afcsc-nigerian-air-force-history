@@ -1400,7 +1400,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image10.jpeg"
+      "photo": "assets/history/image10.jpeg",
+      "portrait": "assets/portraits/01-gerhard-kahtz.jpg"
     },
     {
       "no": 2,
@@ -1420,7 +1421,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image33.jpeg"
+      "photo": "assets/history/image33.jpeg",
+      "portrait": "assets/portraits/02-wolfgang-thimmig.jpg"
     },
     {
       "no": 3,
@@ -1444,7 +1446,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image36.jpeg"
+      "photo": "assets/history/image36.jpeg",
+      "portrait": "assets/portraits/03-george-t-kurubo.jpg"
     },
     {
       "no": 4,
@@ -1468,7 +1471,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image47.jpeg"
+      "photo": "assets/history/image47.jpeg",
+      "portrait": "assets/portraits/04-shittu-akanji-alao.jpg"
     },
     {
       "no": 5,
@@ -1491,7 +1495,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image58.jpeg"
+      "photo": "assets/history/image58.jpeg",
+      "portrait": "assets/portraits/05-emmanuel-e-ikwue.jpg"
     },
     {
       "no": 6,
@@ -1515,7 +1520,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image61.jpeg"
+      "photo": "assets/history/image61.jpeg",
+      "portrait": "assets/portraits/06-john-yisa-doko.jpg"
     },
     {
       "no": 7,
@@ -1536,7 +1542,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image65.jpeg"
+      "photo": "assets/history/image65.jpeg",
+      "portrait": "assets/portraits/07-abdullahi-d-bello.jpg"
     },
     {
       "no": 8,
@@ -1559,7 +1566,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image68.jpeg"
+      "photo": "assets/history/image68.jpeg",
+      "portrait": "assets/portraits/08-ibrahim-m-alfa.jpg"
     },
     {
       "no": 9,
@@ -1580,7 +1588,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image78.jpeg"
+      "photo": "assets/history/image78.jpeg",
+      "portrait": "assets/portraits/09-nuraini-o-yussuff.jpg"
     },
     {
       "no": 10,
@@ -1598,7 +1607,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image79.jpeg"
+      "photo": "assets/history/image79.jpeg",
+      "portrait": "assets/portraits/10-akin-dada.jpg"
     },
     {
       "no": 11,
@@ -1617,7 +1627,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image82.jpeg"
+      "photo": "assets/history/image82.jpeg",
+      "portrait": "assets/portraits/11-femi-john-femi.jpg"
     },
     {
       "no": 12,
@@ -1640,7 +1651,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image83.jpeg"
+      "photo": "assets/history/image83.jpeg",
+      "portrait": "assets/portraits/12-nsikak-eduok.jpg"
     },
     {
       "no": 13,
@@ -1661,7 +1673,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image86.jpeg"
+      "photo": "assets/history/image86.jpeg",
+      "portrait": "assets/portraits/13-isaac-m-alfa.jpg"
     },
     {
       "no": 14,
@@ -1682,7 +1695,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image87.jpeg"
+      "photo": "assets/history/image87.jpeg",
+      "portrait": "assets/portraits/14-jonah-d-wuyep.jpg"
     },
     {
       "no": 15,
@@ -1705,7 +1719,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image90.jpeg"
+      "photo": "assets/history/image90.jpeg",
+      "portrait": "assets/portraits/15-paul-dike.jpg"
     },
     {
       "no": 16,
@@ -1726,7 +1741,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image96.jpeg"
+      "photo": "assets/history/image96.jpeg",
+      "portrait": "assets/portraits/16-oluseyi-petinrin.jpg"
     },
     {
       "no": 17,
@@ -1748,7 +1764,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image101.jpeg"
+      "photo": "assets/history/image101.jpeg",
+      "portrait": "assets/portraits/17-mohammed-d-umar.jpg"
     },
     {
       "no": 18,
@@ -1771,7 +1788,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image108.jpeg"
+      "photo": "assets/history/image108.jpeg",
+      "portrait": "assets/portraits/18-alex-s-badeh.jpg"
     },
     {
       "no": 19,
@@ -1793,7 +1811,8 @@ window.HOF_CONTENT = {
       "sources": [
         "Wikipedia"
       ],
-      "photo": "assets/history/image109.jpeg"
+      "photo": "assets/history/image109.jpeg",
+      "portrait": "assets/portraits/19-adesola-n-amosu.jpg"
     },
     {
       "no": 20,
@@ -1816,7 +1835,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image111.jpeg"
+      "photo": "assets/history/image111.jpeg",
+      "portrait": "assets/portraits/20-sadique-b-abubakar.jpg"
     },
     {
       "no": 21,
@@ -1839,7 +1859,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/history/image134.jpeg"
+      "photo": "assets/history/image134.jpeg",
+      "portrait": "assets/portraits/21-isiaka-o-amao.jpg"
     },
     {
       "no": 22,
@@ -1862,7 +1883,8 @@ window.HOF_CONTENT = {
         "Wikipedia",
         "Nigerian Air Force (airforce.mil.ng)"
       ],
-      "photo": "assets/photos/01-chiefs/22-hasan-bala-abubakar-portrait.jpg"
+      "photo": "assets/photos/01-chiefs/22-hasan-bala-abubakar-portrait.jpg",
+      "portrait": "assets/portraits/22-hasan-b-abubakar.jpg"
     },
     {
       "no": 23,
@@ -1886,7 +1908,8 @@ window.HOF_CONTENT = {
         "Nigerian Air Force (airforce.mil.ng)",
         "Wikipedia"
       ],
-      "photo": "assets/photos/01-chiefs/23-sunday-kelvin-aneke-portrait.jpg"
+      "photo": "assets/photos/01-chiefs/23-sunday-kelvin-aneke-portrait.jpg",
+      "portrait": "assets/portraits/23-sunday-k-aneke.jpg"
     }
   ],
   "bases": [

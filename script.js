@@ -85,6 +85,8 @@
   var eventYears = Object.keys(countsByYear).map(Number).sort(function (a, b) { return a - b; });
 
   function filmById(id) { for (var i = 0; i < C.films.length; i++) if (C.films[i].id === id) return C.films[i]; return null; }
+  // The evenly cropped portrait (assets/portraits) where there is one, else the archive photo.
+  function portraitOf(c) { return c.portrait || c.photo; }
   function chiefByNo(n) { for (var i = 0; i < C.chiefs.length; i++) if (C.chiefs[i].no === n) return C.chiefs[i]; return C.chiefs[0]; }
   function baseById(id) { for (var i = 0; i < C.bases.length; i++) if (C.bases[i].id === id) return C.bases[i]; return C.bases[0]; }
   function eventsInYear(y) { return C.events.filter(function (e) { return e.year === y; }); }
@@ -93,7 +95,7 @@
   function filmStill(f) {
     for (var i = 0; i < C.events.length; i++) if (C.events[i].film === f.id && C.events[i].photos && C.events[i].photos.length) return C.events[i].photos[0];
     if (f.section === 'college') return C.chronicles.college.hero;
-    if (f.section === 'chiefs') return chiefByNo(C.chiefs.length).photo;
+    if (f.section === 'chiefs') return portraitOf(chiefByNo(C.chiefs.length));
     if (f.section === 'home') return firstPhoto(C.events.filter(function (e) { return e.year === 1964; }));
     if (f.year) return firstPhoto(eventsInYear(f.year));
     return '';
@@ -473,7 +475,7 @@
     var intro = filmById('intro');
     var rows = [
       { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: C.events.length + ' recorded moments from 1961 to today, decade by decade and year by year.' },
-      { key: 'chiefs', img: chiefByNo(C.chiefs.length).photo, desc: 'All ' + C.chiefs.length + ' heads of the service, their tenures drawn to scale, and the story of each.' },
+      { key: 'chiefs', img: portraitOf(chiefByNo(C.chiefs.length)), desc: 'All ' + C.chiefs.length + ' heads of the service, their tenures drawn to scale, and the story of each.' },
       { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College at Jaji.' },
       { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
     ];
@@ -614,7 +616,7 @@
     });
 
     var casCard = cas
-      ? '<button class="cas-card" data-act="chief" data-arg="' + cas.no + '">' + frame(cas.photo, 'cas-photo', initials(cas.name)) +
+      ? '<button class="cas-card" data-act="chief" data-arg="' + cas.no + '">' + frame(portraitOf(cas), 'cas-photo', initials(cas.name)) +
           '<span class="cas-text"><span class="eyebrow">Chief of the Air Staff in ' + y + '</span><span class="cas-name">' + esc(cas.name) + '</span><span class="cas-sub">' + esc(chiefLabel(cas)) + ' · tap for his story</span></span></button>'
       : '<div class="cas-card cas-card--none"><span class="cas-text"><span class="eyebrow">Before the first commander</span><span class="cas-name">The Air Force did not yet exist</span><span class="cas-sub">Formally established 18 April 1964</span></span></div>';
 
@@ -717,7 +719,7 @@
         '<div class="chief-strip" data-scroll="x" id="chief-strip"><div class="chief-strip-track">' +
           C.chiefs.map(function (c) {
             return '<button class="chief-card' + (c.serving ? ' chief-card--serving' : '') + '" data-act="chief" data-arg="' + c.no + '">' +
-              frame(c.photo, 'chief-card-photo', initials(c.name)) +
+              frame(portraitOf(c), 'chief-card-photo', initials(c.name)) +
               '<span class="chief-card-no">' + (c.serving ? 'Serving' : ordinal(c.no)) + '</span>' +
               '<span class="chief-card-body">' +
                 '<span class="chief-card-name">' + esc(c.shortName) + '</span>' +
@@ -748,9 +750,9 @@
     if (c.state) meta.push(['State of origin', c.state]);
     return '' +
       '<div class="chief">' +
-        (c.photo ? '<div class="chief-bg" style="background-image:url(&quot;' + esc(c.photo) + '&quot;)"></div>' : '') +
+        (portraitOf(c) ? '<div class="chief-bg" style="background-image:url(&quot;' + esc(portraitOf(c)) + '&quot;)"></div>' : '') +
         '<div class="chief-left">' +
-          '<button class="chief-portrait"' + zoomAttrs('chief', 0) + '>' + frame(c.photo, 'chief-portrait-frame', initials(c.name)) + '</button>' +
+          '<button class="chief-portrait"' + zoomAttrs('chief', 0) + '>' + frame(portraitOf(c), 'chief-portrait-frame', initials(c.name)) + '</button>' +
           '<div class="chief-ordinal">' + esc(chiefLabel(c)) + '</div>' +
           '<div class="chief-pager">' +
             '<button class="round-btn' + (prev ? '' : ' is-off') + '" data-act="chief" data-arg="' + (prev ? prev.no : '') + '" aria-label="Previous Chief">' + ICON.prev + '</button>' +
@@ -933,7 +935,7 @@
     }
     return '<div class="pick-head"><h3 class="pick-title">Which Chief of the Air Staff?</h3><p class="section-intro">Listed in order of service.</p></div>' +
       '<div class="chief-pick">' + C.chiefs.map(function (c) {
-        return '<button class="chief-pick-btn" data-act="cval" data-arg="' + c.no + '">' + frame(c.photo, 'chief-pick-photo', initials(c.name)) +
+        return '<button class="chief-pick-btn" data-act="cval" data-arg="' + c.no + '">' + frame(portraitOf(c), 'chief-pick-photo', initials(c.name)) +
           '<span class="chief-pick-text"><span class="chief-pick-name">' + esc(c.shortName) + '</span><span class="chief-pick-years">' + chiefYears(c) + '</span></span></button>';
       }).join('') + '</div>';
   }
@@ -974,7 +976,7 @@
     }
     var left = '';
     if (r.chiefs.length) left += '<h3 class="sub-head">' + esc(r.chiefsHead) + '</h3>' + r.chiefs.map(function (c) {
-      return '<button class="cas-card" data-act="chief" data-arg="' + c.no + '">' + frame(c.photo, 'cas-photo', initials(c.name)) +
+      return '<button class="cas-card" data-act="chief" data-arg="' + c.no + '">' + frame(portraitOf(c), 'cas-photo', initials(c.name)) +
         '<span class="cas-text"><span class="eyebrow">' + esc(chiefLabel(c)) + '</span><span class="cas-name">' + esc(c.name) + '</span><span class="cas-sub">' + chiefYears(c) + ' · ' + esc(tenure(c)) + '</span></span></button>';
     }).join('');
     if (r.bases.length) left += '<h3 class="sub-head">Air Force presence</h3>' + r.bases.map(function (b) {

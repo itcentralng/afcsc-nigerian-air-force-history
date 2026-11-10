@@ -423,7 +423,7 @@ svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width:
 .chief-card { position: relative; width: 300px; height: 100%; flex: none; display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); animation: rise .7s var(--ease) both; }
 .chief-card--serving { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 50px rgba(201,162,78,.25); }
 .chief-card-photo { flex: 1; min-height: 0; }
-.chief-card-photo img { object-position: center 18%; }
+.chief-card-photo img { object-position: center 35%; }
 .chief-card-photo::before { font-size: 64px; font-style: normal; font-weight: 600; }
 .chief-card-no { position: absolute; z-index: 2; top: 14px; left: 14px; padding: 4px 12px; border-radius: 999px; background: rgba(7,20,15,.82); border: 1px solid var(--gold-line); font-family: var(--font-mono); font-size: 15px; color: var(--gold-bright); }
 .chief-card--serving .chief-card-no { background: var(--gold); color: var(--ink-900); }
@@ -439,7 +439,7 @@ svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width:
 .chief-left { display: flex; flex-direction: column; align-items: center; gap: 18px; animation: rise .6s var(--ease) both; }
 .chief-portrait { position: relative; padding: 10px; border-radius: 26px; border: 1px solid var(--gold-line); background: linear-gradient(160deg, rgba(201,162,78,.25), rgba(201,162,78,.03)); }
 .chief-portrait-frame { width: 520px; height: 640px; border-radius: 18px; }
-.chief-portrait-frame img { object-position: center 18%; }
+.chief-portrait-frame img { object-position: center 35%; }
 .chief-portrait-frame::before { font-size: 120px; font-style: normal; font-weight: 600; }
 .chief-ordinal { font-weight: 700; font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); text-align: center; }
 .chief-pager { display: flex; align-items: center; gap: 22px; font-size: 18px; color: var(--muted); }
@@ -554,7 +554,7 @@ svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width:
 .chief-pick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 .chief-pick-btn { display: grid; grid-template-columns: 62px 1fr; gap: 12px; align-items: center; padding: 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
 .chief-pick-photo { width: 62px; height: 72px; border-radius: 10px; }
-.chief-pick-photo img { object-position: center 18%; }
+.chief-pick-photo img { object-position: center 35%; }
 .chief-pick-photo::before { font-size: 18px; font-style: normal; padding: 0; }
 .chief-pick-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .chief-pick-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
