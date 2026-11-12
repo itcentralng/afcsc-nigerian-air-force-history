@@ -87,6 +87,12 @@
   function filmById(id) { for (var i = 0; i < C.films.length; i++) if (C.films[i].id === id) return C.films[i]; return null; }
   // The evenly cropped portrait (assets/portraits) where there is one, else the archive photo.
   function portraitOf(c) { return c.portrait || c.photo; }
+  // Past Chiefs: everyone except the serving Chief, who is not listed on the
+  // Past Chiefs page (the Hall of Fame is named after him; he appears on the
+  // timeline but has no entry in the gallery).
+  var PAST = C.chiefs.filter(function (c) { return !c.serving; });
+  var LAST_PAST = PAST[PAST.length - 1];
+  function isPast(c) { return c && !c.serving; }
   function chiefByNo(n) { for (var i = 0; i < C.chiefs.length; i++) if (C.chiefs[i].no === n) return C.chiefs[i]; return C.chiefs[0]; }
   function baseById(id) { for (var i = 0; i < C.bases.length; i++) if (C.bases[i].id === id) return C.bases[i]; return C.bases[0]; }
   function eventsInYear(y) { return C.events.filter(function (e) { return e.year === y; }); }
@@ -95,7 +101,7 @@
   function filmStill(f) {
     for (var i = 0; i < C.events.length; i++) if (C.events[i].film === f.id && C.events[i].photos && C.events[i].photos.length) return C.events[i].photos[0];
     if (f.section === 'college') return C.chronicles.college.hero;
-    if (f.section === 'chiefs') return portraitOf(chiefByNo(C.chiefs.length));
+    if (f.section === 'chiefs') return portraitOf(LAST_PAST);
     if (f.section === 'home') return firstPhoto(C.events.filter(function (e) { return e.year === 1964; }));
     if (f.year) return firstPhoto(eventsInYear(f.year));
     return '';
@@ -431,7 +437,7 @@
           '<p class="attract-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
           '<div class="attract-figures">' +
             figure(String(years), 'years of service') +
-            figure(String(C.chiefs.length), 'Commanders &amp; Chiefs') +
+            figure(String(PAST.length), 'past Chiefs') +
             figure(String(C.events.length), 'recorded moments') +
             figure(String(now.getFullYear() - 1976), 'years of the College') +
           '</div>' +
@@ -500,7 +506,7 @@
     var intro = filmById('intro');
     var rows = [
       { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: C.events.length + ' recorded moments from 1961 to today, decade by decade and year by year.' },
-      { key: 'chiefs', img: portraitOf(chiefByNo(C.chiefs.length)), desc: 'All ' + C.chiefs.length + ' heads of the service, their tenures drawn to scale, and the story of each.' },
+      { key: 'chiefs', img: portraitOf(LAST_PAST), desc: 'The ' + PAST.length + ' officers who led the service from ' + yr(PAST[0].from) + ' to ' + yr(LAST_PAST.to) + ', their tenures drawn to scale, and the story of each.' },
       { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College at Jaji.' },
       { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
     ];
@@ -640,7 +646,10 @@
       (e.photos || []).forEach(function (p, i) { lists[key].push({ src: p, date: e.date, title: e.title, text: i === 0 ? (e.caption || '') : '' }); });
     });
 
-    var casCard = cas
+    var casCard = cas && !isPast(cas)
+      ? '<div class="cas-card">' + frame(portraitOf(cas), 'cas-photo', initials(cas.name)) +
+          '<span class="cas-text"><span class="eyebrow">Chief of the Air Staff in ' + y + '</span><span class="cas-name">' + esc(cas.name) + '</span><span class="cas-sub">Serving Chief of the Air Staff</span></span></div>'
+      : cas
       ? '<button class="cas-card" data-act="chief" data-arg="' + cas.no + '">' + frame(portraitOf(cas), 'cas-photo', initials(cas.name)) +
           '<span class="cas-text"><span class="eyebrow">Chief of the Air Staff in ' + y + '</span><span class="cas-name">' + esc(cas.name) + '</span><span class="cas-sub">' + esc(chiefLabel(cas)) + ' · tap for his story</span></span></button>'
       : '<div class="cas-card cas-card--none"><span class="cas-text"><span class="eyebrow">Before the first commander</span><span class="cas-name">The Air Force did not yet exist</span><span class="cas-sub">Formally established 18 April 1964</span></span></div>';
@@ -724,7 +733,7 @@
   RENDER.chiefs = function () {
     var span = LINEAGE_TO - LINEAGE_FROM, W = 1760;
     function x(iso) { var d = parseISO(iso); return ((d.getFullYear() + d.getMonth() / 12 + d.getDate() / 365) - LINEAGE_FROM) / span * W; }
-    var segs = C.chiefs.map(function (c, i) {
+    var segs = PAST.map(function (c, i) {
       var a = x(c.from), b = c.to ? x(c.to) : x(new Date().toISOString().slice(0, 10));
       var w = Math.max(6, b - a);
       return '<button class="lineage-seg' + (i % 2 ? ' alt' : '') + (c.serving ? ' serving' : '') + '" data-act="chief" data-arg="' + c.no + '" style="left:' + a.toFixed(1) + 'px;width:' + w.toFixed(1) + 'px" title="' + esc(c.shortName) + '">' +
@@ -737,12 +746,12 @@
     return '' +
       '<div class="chiefs">' +
         '<div class="page-head">' +
-          masthead('chiefs', 'Two German commanders, then ' + (C.chiefs.length - 2) + ' Nigerian Chiefs of the Air Staff from 1966 to today. The bar below draws every tenure to scale; the gallery runs in order of appointment.') +
+          masthead('chiefs', 'Two German commanders, then ' + (PAST.length - 2) + ' Nigerian Chiefs of the Air Staff from 1966 to ' + yr(LAST_PAST.to) + '. The bar below draws every tenure to scale; the gallery runs in order of appointment.') +
           (aneke ? filmButton(aneke) : '') +
         '</div>' +
         '<div class="lineage"><div class="lineage-bar">' + segs + '</div><div class="lineage-axis">' + ticks + '</div></div>' +
         '<div class="chief-strip" data-scroll="x" id="chief-strip"><div class="chief-strip-track">' +
-          C.chiefs.map(function (c) {
+          PAST.map(function (c) {
             return '<button class="chief-card' + (c.serving ? ' chief-card--serving' : '') + '" data-act="chief" data-arg="' + c.no + '">' +
               frame(portraitOf(c), 'chief-card-photo', initials(c.name)) +
               '<span class="chief-card-no">' + (c.serving ? 'Serving' : ordinal(c.no)) + '</span>' +
@@ -764,8 +773,9 @@
 
   RENDER.chief = function () {
     var c = chiefByNo(state.chief);
-    var i = C.chiefs.indexOf(c);
-    var prev = C.chiefs[i - 1], next = C.chiefs[i + 1];
+    if (!isPast(c)) { c = LAST_PAST; state.chief = c.no; }
+    var i = PAST.indexOf(c);
+    var prev = PAST[i - 1], next = PAST[i + 1];
     var a = +yr(c.from), b = c.to ? +yr(c.to) : new Date().getFullYear();
     var evs = C.events.filter(function (e) { return e.year >= a && e.year <= b; });
     lists.chief = [{ src: c.photo, date: chiefLabel(c), title: c.name, text: chiefYears(c) }];
@@ -781,7 +791,7 @@
           '<div class="chief-ordinal">' + esc(chiefLabel(c)) + '</div>' +
           '<div class="chief-pager">' +
             '<button class="round-btn' + (prev ? '' : ' is-off') + '" data-act="chief" data-arg="' + (prev ? prev.no : '') + '" aria-label="Previous Chief">' + ICON.prev + '</button>' +
-            '<span>' + (i + 1) + ' of ' + C.chiefs.length + '</span>' +
+            '<span>' + (i + 1) + ' of ' + PAST.length + '</span>' +
             '<button class="round-btn' + (next ? '' : ' is-off') + '" data-act="chief" data-arg="' + (next ? next.no : '') + '" aria-label="Next Chief">' + ICON.next + '</button>' +
           '</div>' +
         '</div>' +
@@ -1219,7 +1229,7 @@
     year: function (arg) { closeLightbox(); selectYear(arg); },
     'year-clear': function () { step({ year: null }); },
     chief: function (arg) {
-      if (!arg) return;
+      if (!arg || !isPast(chiefByNo(+arg))) return;
       closeLightbox();
       if (state.screen === 'chief') { step({ chief: +arg }); el.screens.chief.querySelector('.chief-right').scrollTop = 0; }
       else go('chief', { chief: +arg });

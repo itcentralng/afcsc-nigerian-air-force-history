@@ -58,10 +58,13 @@ key to `EXPLORE_KEYS` near the top of `script.js`.
   yet copied to `assets/video/` shows as "Coming soon" (see
   `assets/video/README.txt` for the file names); it appears automatically once
   the file is in place.
-- **02 · Chiefs of the Air Staff**: every tenure drawn to scale on a
-  1963–today ribbon, and a portrait gallery to sweep through. Each Chief has a
-  biography page: tenure, time in office, birth, state of origin, notable
-  achievements, sources, and everything that happened under his command.
+- **02 · Past Chiefs of the Air Staff**: the 22 officers who led the service
+  from 1963 to 2025, each tenure drawn to scale on a ribbon, and a portrait
+  gallery to sweep through. Each Chief has a biography page: tenure, time in
+  office, birth, state of origin, notable achievements, sources, and
+  everything that happened under his command. The serving Chief of the Air
+  Staff is not listed here (the Hall of Fame bears his name); he appears on the
+  timeline as the Chief of the Air Staff for 2025 and 2026, without a link.
 - **03 · The College** and **04 · Air Warfare**:
   illustrated chronicles along a vertical spine, linked to each other.
 - **05 · Fleet & Bases**: a map of Nigeria with 20 bases (tap a pin or a name)
