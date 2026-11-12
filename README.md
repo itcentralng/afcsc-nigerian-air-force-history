@@ -159,6 +159,13 @@ misses, and `BOUNDS` keeps the crop clear of printed captions and borders.
 prototype. `node tools/extract-content.js` rebuilds `data/content.js` from it;
 only re-run that if the archive is replaced, since it overwrites hand edits.
 
+## App icon
+
+`assets/icons/app.ico` is the Nigerian Air Force crest (from `naf.png`) at
+16–256 px. `prepare.bat` gives the Desktop shortcut this icon, and the page
+uses it as its browser icon. If the shortcut was made before this change,
+run `prepare.bat` again to pick up the new icon.
+
 ## Fonts
 
 Playfair Display, Source Sans 3 and IBM Plex Mono are bundled in
