@@ -442,10 +442,10 @@
           '</svg>' +
         '</div>' +
         '<svg class="welcome-flight" viewBox="0 0 1920 1080" aria-hidden="true">' +
-          '<path class="flight-trail" d="M-480 520C260 330 610 300 980 430S1700 820 2250 860"></path>' +
+          '<path class="flight-trail" d="M2250 860C1700 820 1350 560 980 430S260 330 -480 520"></path>' +
           '<g class="flight-plane">' +
-            '<animateMotion dur="11s" begin=".35s" repeatCount="indefinite" rotate="auto" path="M-480 520C260 330 610 300 980 430S1700 820 2250 860"></animateMotion>' +
-            '<image href="assets/aircraft/a-29-flypast.png" x="-306" y="-204" width="612" height="408"></image>' +
+            '<animateMotion dur="11s" begin=".35s" repeatCount="indefinite" rotate="0" path="M2250 860C1700 820 1350 560 980 430S260 330 -480 520"></animateMotion>' +
+            '<g transform="scale(-1 1)"><image href="assets/aircraft/a-29-flypast.png" x="-306" y="-204" width="612" height="408"></image></g>' +
           '</g>' +
         '</svg>' +
         '<div class="welcome-corner welcome-corner--top">' +
@@ -459,11 +459,12 @@
             '<img class="welcome-crest welcome-crest--afcsc" src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College, Nigeria" />' +
           '</div>' +
           '</div>' +
-          '<p class="welcome-college">Armed Forces Command and Staff College, Jaji</p>' +
-          '<div class="welcome-department"><span></span><b>Department of Air Warfare</b><span></span></div>' +
-          '<h1 class="welcome-title"><i>The</i><span>History</span><span>Experience</span></h1>' +
-          '<p class="welcome-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
-          '<button class="welcome-enter" data-act="begin"><span>Enter Experience</span><span class="welcome-enter-icon">' + ICON.next + '</span></button>' +
+          '<h1 class="welcome-title"><i>The</i><span>History</span></h1>' +
+          '<p class="welcome-lede">The story of ' + years + ' years of the Nigerian Air Force, its ' + PAST.length + ' Chiefs, AFCSC, and the Department of Air Warfare.</p>' +
+          '<div class="welcome-enter-wrap">' +
+            '<span class="welcome-enter-pulse"></span><span class="welcome-enter-pulse welcome-enter-pulse--delay"></span>' +
+            '<button class="welcome-enter" data-act="begin"><span>Explore the History</span><span class="welcome-enter-icon">' + ICON.next + '</span></button>' +
+          '</div>' +
           '<nav class="welcome-links" aria-label="Go straight to a chapter">' +
             EXPLORE_KEYS.map(function (k, i) {
               return (i ? '<span class="welcome-link-dot"></span>' : '') +
