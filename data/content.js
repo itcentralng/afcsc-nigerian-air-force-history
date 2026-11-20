@@ -13,9 +13,9 @@
 */
 window.HOF_CONTENT = {
   "meta": {
-    "title": "Nigerian Air Force History",
+    "title": "History",
     "kicker": "Nigerian Air Force · Established 1964",
-    "subtitle": "Our History",
+    "subtitle": "History",
     "host": "Armed Forces Command and Staff College, Nigeria",
     "tagline": "Six decades of Nigerian airpower: the people, the aircraft and the moments that built the Nigerian Air Force.",
     "source": "https://aneke-hall-of-fame.netlify.app"

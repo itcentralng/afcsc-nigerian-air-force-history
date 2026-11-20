@@ -433,7 +433,7 @@
 
         '<div class="attract-hero">' +
           '<div class="attract-kicker">SK Aneke Hall of Fame · Department of Air Warfare</div>' +
-          '<h1 class="attract-title">Nigerian Air Force History</h1>' +
+          '<h1 class="attract-title">History</h1>' +
           '<p class="attract-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
           '<div class="attract-figures">' +
             figure(String(years), 'years of service') +

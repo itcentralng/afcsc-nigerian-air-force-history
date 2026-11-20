@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-rem Update Nigerian Air Force History - SK Aneke Hall of Fame from its configured GitHub branch.
+rem Update History - SK Aneke Hall of Fame from its configured GitHub branch.
 cd /d "%~dp0"
 
 where git >nul 2>&1
@@ -17,6 +17,7 @@ if not exist ".git" (
 )
 
 echo Closing the kiosk if it is running...
+taskkill /fi "WINDOWTITLE eq History - SK Aneke Hall of Fame*" /t /f >nul 2>&1
 taskkill /fi "WINDOWTITLE eq Nigerian Air Force History*" /t /f >nul 2>&1
 taskkill /fi "WINDOWTITLE eq SK Aneke Hall of Fame - Nigerian Air Force History*" /t /f >nul 2>&1
 taskkill /fi "WINDOWTITLE eq Air Marshal S.K. Aneke Hall of Fame*" /t /f >nul 2>&1
