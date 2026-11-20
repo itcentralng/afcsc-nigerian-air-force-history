@@ -91,6 +91,7 @@ is playing). Timings are at the top of `script.js`.
 1. Copy the whole folder onto the kiosk PC, including `assets/`.
 2. Run `prepare.bat` once to create a Desktop shortcut (then pin it to the taskbar).
 3. Launch with the shortcut or `run.bat`. It opens Microsoft Edge in full-screen kiosk mode.
+4. To update later, run `update.bat`. It closes the kiosk, fast-forward updates from the configured GitHub branch, and restarts it. Git and an internet connection are required; local changes that prevent a safe update are left untouched.
 
 For development, open `index.html` in any modern browser.
 
@@ -158,13 +159,6 @@ misses, and `BOUNDS` keeps the crop clear of printed captions and borders.
 `source/aneke-hall-of-fame/` keeps the page as downloaded from the Netlify
 prototype. `node tools/extract-content.js` rebuilds `data/content.js` from it;
 only re-run that if the archive is replaced, since it overwrites hand edits.
-
-## App icon
-
-`assets/icons/app.ico` is the Nigerian Air Force crest (from `naf.png`) at
-16–256 px. `prepare.bat` gives the Desktop shortcut this icon, and the page
-uses it as its browser icon. If the shortcut was made before this change,
-run `prepare.bat` again to pick up the new icon.
 
 ## Fonts
 
