@@ -386,11 +386,8 @@
 
   function renderChapters() {
     var cur = state.screen === 'chief' ? 'chiefs' : state.screen;
-    var sec = SECTIONS[cur];
-    el.chapters.className = 'chapters topbar-section' + (cur === 'home' ? ' invisible' : '');
-    el.chapters.innerHTML = sec
-      ? '<span class="topbar-section-n">' + esc(sec.n) + '</span><span class="topbar-section-rule"></span><span class="topbar-section-title">' + esc(sec.name || sec.nav) + '</span>'
-      : '';
+    el.chapters.className = 'chapters hidden';
+    el.chapters.innerHTML = '';
     renderSectionDock(cur);
   }
 
@@ -458,7 +455,10 @@
         '<div class="welcome-composition">' +
           '<div class="welcome-crest-wrap">' +
             '<svg class="welcome-crest-ring" viewBox="-100 -100 200 200" aria-hidden="true"><circle r="96"></circle><circle r="88"></circle></svg>' +
-            '<img class="welcome-crest" src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College, Nigeria" />' +
+          '<div class="welcome-crests">' +
+            '<img class="welcome-crest welcome-crest--naf" src="assets/icons/naf.png" alt="Nigerian Air Force" />' +
+            '<img class="welcome-crest welcome-crest--afcsc" src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College, Nigeria" />' +
+          '</div>' +
           '</div>' +
           '<p class="welcome-college">Armed Forces Command and Staff College, Jaji</p>' +
           '<div class="welcome-department"><span></span><b>Department of Air Warfare</b><span></span></div>' +
