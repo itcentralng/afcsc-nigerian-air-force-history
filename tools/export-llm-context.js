@@ -43,7 +43,7 @@ const hq = C.bases.find((b) => b.id === 'abuja');
 
 L('NIGERIAN AIR FORCE HISTORY — REFERENCE CONTEXT');
 L();
-L('About this document: a factual reference on the history of the Nigerian Air Force (NAF), compiled for the Air Marshal S.K. Aneke Hall of Fame at the Armed Forces Command and Staff College (AFCSC), Nigeria. It covers the founding and development of the NAF from 1961, every Commander and Chief of the Air Staff, the history of the AFCSC and its Department of Air Warfare, NAF bases and the aircraft the NAF has operated. Information is current as of ' + asOf + '. Biographies of the Chiefs of the Air Staff draw on the Nigerian Air Force (airforce.mil.ng) and Wikipedia. Where this document is silent on a point, treat that point as not covered rather than inferring it.');
+L('About this document: a factual reference on the history of the Nigerian Air Force (NAF), compiled for SK Aneke Hall of Fame at the Armed Forces Command and Staff College (AFCSC), Nigeria. It covers the founding and development of the NAF from 1961, every Commander and Chief of the Air Staff, the history of the AFCSC and its Department of Air Warfare, NAF bases and the aircraft the NAF has operated. Information is current as of ' + asOf + '. Biographies of the Chiefs of the Air Staff draw on the Nigerian Air Force (airforce.mil.ng) and Wikipedia. Where this document is silent on a point, treat that point as not covered rather than inferring it.');
 
 H1('Key facts');
 if (founded) L('- Established: ' + founded.date + '. ' + clean(founded.text.join(' ')));

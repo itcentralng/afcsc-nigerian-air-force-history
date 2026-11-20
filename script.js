@@ -432,8 +432,8 @@
         '</header>' +
 
         '<div class="attract-hero">' +
-          '<div class="attract-kicker">The Air Marshal S.K. Aneke</div>' +
-          '<h1 class="attract-title">Hall of Fame</h1>' +
+          '<div class="attract-kicker">SK Aneke Hall of Fame · Department of Air Warfare</div>' +
+          '<h1 class="attract-title">Nigerian Air Force History</h1>' +
           '<p class="attract-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
           '<div class="attract-figures">' +
             figure(String(years), 'years of service') +
@@ -519,7 +519,7 @@
         (intro ? '<video class="home-video" muted loop playsinline autoplay src="' + esc(intro.src) + '"></video>' : '') +
         '<div class="home-shade"></div>' +
         '<div class="home-left">' +
-          '<header class="masthead masthead--home"><div class="masthead-kicker">Welcome to the Hall of Fame</div>' +
+          '<header class="masthead masthead--home"><div class="masthead-kicker">Welcome to SK Aneke Hall of Fame</div>' +
             '<h1 class="masthead-title">Explore the history</h1>' +
             '<p class="masthead-lede">' + esc(C.meta.tagline) + ' Choose one of the four sections, or begin with the film.</p></header>' +
           (intro ? '<button class="home-film" data-act="film" data-arg="intro">' +

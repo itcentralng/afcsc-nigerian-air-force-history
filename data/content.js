@@ -1,5 +1,5 @@
 /*
-  Content for the Air Marshal S.K. Aneke Hall of Fame kiosk.
+  Content for the SK Aneke Hall of Fame kiosk.
 
   Extracted from https://aneke-hall-of-fame.netlify.app by tools/extract-content.js and
   then maintained here by hand. Plain data only; see README.md for the
@@ -13,7 +13,7 @@
 */
 window.HOF_CONTENT = {
   "meta": {
-    "title": "Air Marshal S.K. Aneke Hall of Fame",
+    "title": "Nigerian Air Force History",
     "kicker": "Nigerian Air Force · Established 1964",
     "subtitle": "Our History",
     "host": "Armed Forces Command and Staff College, Nigeria",
@@ -1368,9 +1368,9 @@ window.HOF_CONTENT = {
     {
       "year": 2026,
       "date": "2026",
-      "title": "The Air Marshal S.K. Aneke Hall of Fame opens at the College in Nigeria",
+      "title": "The SK Aneke Hall of Fame opens at the College in Nigeria",
       "text": [
-        "The Air Marshal S.K. Aneke Hall of Fame opens at the Armed Forces Command and Staff College, Nigeria. You are standing in the newest chapter of the story."
+        "The SK Aneke Hall of Fame opens at the Armed Forces Command and Staff College, Nigeria. You are standing in the newest chapter of the story."
       ],
       "photos": [
         "assets/photos/06-timeline/2026-hall-of-fame-opening-jaji-building-context.jpg"
@@ -1953,7 +1953,7 @@ window.HOF_CONTENT = {
       "caption": "The Armed Forces Command and Staff College campus in Nigeria",
       "text": [
         "The Armed Forces Command and Staff College is in Nigeria, north of Kaduna, and was established in 1976 so that officers of the Army, Navy and Air Force could learn to plan and command together at the operational level.",
-        "The Department of Air Warfare teaches airpower doctrine, air campaign planning and joint operations to every student of the College. The Air Marshal S.K. Aneke Hall of Fame stands here."
+        "The Department of Air Warfare teaches airpower doctrine, air campaign planning and joint operations to every student of the College. The SK Aneke Hall of Fame stands here."
       ],
       "labelDy": -10
     },
@@ -2390,7 +2390,7 @@ window.HOF_CONTENT = {
       "subtitle": "Introduction",
       "src": "assets/video/intro.mp4",
       "section": "home",
-      "description": "An introduction to the Air Marshal S.K. Aneke Hall of Fame and the story of the Nigerian Air Force."
+      "description": "An introduction to the SK Aneke Hall of Fame and the story of the Nigerian Air Force."
     },
     {
       "id": "birth",
@@ -2630,7 +2630,7 @@ window.HOF_CONTENT = {
           "date": "2026",
           "title": "The Hall of Fame opens",
           "text": [
-            "The Air Marshal S.K. Aneke Hall of Fame opens at the College, preserving the story of Nigerian airpower for every officer who passes through Jaji."
+            "The SK Aneke Hall of Fame opens at the College, preserving the story of Nigerian airpower for every officer who passes through Jaji."
           ],
           "photos": [
             "assets/photos/04-college/2026-hall-of-fame-opening-college-context.jpg"
@@ -2730,7 +2730,7 @@ window.HOF_CONTENT = {
           "date": "2026",
           "title": "A home for the story",
           "text": [
-            "The Department becomes custodian of the Air Marshal S.K. Aneke Hall of Fame."
+            "The Department becomes custodian of the SK Aneke Hall of Fame."
           ],
           "photos": [
             "assets/photos/05-air-warfare/2026-college-joint-education-context.jpg"

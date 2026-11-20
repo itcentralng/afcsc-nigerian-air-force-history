@@ -5,7 +5,7 @@ Drop each film into this folder with exactly the file name below (MP4, H.264 vid
 with AAC audio plays best in Microsoft Edge). The kiosk finds them on its next
 start: "Coming soon" disappears and the film plays. No code change is needed.
 
-intro.mp4     Welcome to the Hall of Fame (Introduction)
+intro.mp4     Welcome to SK Aneke Hall of Fame (Introduction)
               Also loops silently behind the welcome screen.
 birth.mp4     The birth of an Air Force (1961 – 1964 · Retrospective)
 war.mp4       Wings over the war (1967 – 1970 · Retrospective)

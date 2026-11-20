@@ -1,20 +1,20 @@
-# Air Marshal S.K. Aneke Hall of Fame
+# Nigerian Air Force History
 
-**History of the Nigerian Air Force · Armed Forces Command and Staff College, Nigeria**
+**SK Aneke Hall of Fame · Department of Air Warfare · Armed Forces Command and Staff College, Nigeria**
 
 Touch-screen kiosk telling the story of the Nigerian Air Force: the
 moments, the Chiefs of the Air Staff, the College, the Department of Air
 Warfare, the bases and the aircraft. It is a static, offline web app (no
 build step, no framework, no internet needed) designed for a 1920×1080
 landscape display and scaled to fit any screen. It follows the same pattern
-as the Timbuktu Triangle, Our Leaders and Directorate of Procurement kiosks.
+as the Timbuktu Triangle, Past Leaders and Directorate of Procurement kiosks.
 
 The content was extracted from the earlier web prototype at
 <https://aneke-hall-of-fame.netlify.app> and rebuilt here.
 
 ## Four main sections
 
-The Hall of Fame is built around four sections, and only these appear on Home
+SK Aneke Hall of Fame is built around four sections, and only these appear on Home
 and in the top bar:
 
 1. **History of the Nigerian Air Force** (the timeline)

@@ -53,7 +53,7 @@ const clean = (o) => { Object.keys(o).forEach((k) => { if (o[k] === undefined ||
 
 const content = {
   meta: {
-    title: 'Air Marshal S.K. Aneke Hall of Fame',
+    title: 'Nigerian Air Force History',
     kicker: 'Nigerian Air Force · Established 1964',
     subtitle: 'Our History',
     host: 'Armed Forces Command and Staff College, Nigeria',
@@ -151,7 +151,7 @@ const content = {
 };
 
 const banner = `/*
-  Content for the Air Marshal S.K. Aneke Hall of Fame kiosk.
+  Content for the SK Aneke Hall of Fame kiosk.
 
   Extracted from ${content.meta.source} by tools/extract-content.js and
   then maintained here by hand. Plain data only; see README.md for the
