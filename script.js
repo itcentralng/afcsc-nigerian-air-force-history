@@ -451,7 +451,6 @@
         '<div class="welcome-corner welcome-corner--top">' +
           '<span class="welcome-index">01</span><span class="welcome-rule"></span><span class="welcome-eyebrow">Welcome</span>' +
         '</div>' +
-        '<button class="welcome-close" data-act="close-app" aria-label="Close experience">' + ICON.close + '<span>Close</span></button>' +
         '<div class="welcome-composition">' +
           '<div class="welcome-crest-wrap">' +
             '<svg class="welcome-crest-ring" viewBox="-100 -100 200 200" aria-hidden="true"><circle r="96"></circle><circle r="88"></circle></svg>' +
@@ -472,8 +471,8 @@
             }).join('') +
           '</nav>' +
         '</div>' +
-        '<div class="welcome-footer welcome-footer--left"><span class="welcome-eyebrow">Jaji · Kaduna State · Nigeria</span><span>10°49′N · 007°35′E</span></div>' +
-        '<div class="welcome-footer welcome-footer--right"><span class="welcome-eyebrow">Air Faculty established</span><strong>16 March 1978</strong></div>' +
+        '<div class="welcome-footer welcome-footer--left"><span class="welcome-eyebrow">AFCSC · Kaduna State · Nigeria</span><span>10°49′N · 007°35′E</span></div>' +
+        '<div class="welcome-footer welcome-footer--right"><span class="welcome-eyebrow">Department established</span><strong>16 March 1978</strong></div>' +
       '</div>';
   };
   // ---------- Home: four-section Era Explorer ----------
