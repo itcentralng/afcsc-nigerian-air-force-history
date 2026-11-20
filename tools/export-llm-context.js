@@ -43,12 +43,12 @@ const hq = C.bases.find((b) => b.id === 'abuja');
 
 L('NIGERIAN AIR FORCE HISTORY — REFERENCE CONTEXT');
 L();
-L('About this document: a factual reference on the history of the Nigerian Air Force (NAF), compiled for the Air Marshal S.K. Aneke Hall of Fame at the Armed Forces Command and Staff College (AFCSC), Jaji. It covers the founding and development of the NAF from 1961, every Commander and Chief of the Air Staff, the history of the AFCSC and its Department of Air Warfare, NAF bases and the aircraft the NAF has operated. Information is current as of ' + asOf + '. Biographies of the Chiefs of the Air Staff draw on the Nigerian Air Force (airforce.mil.ng) and Wikipedia. Where this document is silent on a point, treat that point as not covered rather than inferring it.');
+L('About this document: a factual reference on the history of the Nigerian Air Force (NAF), compiled for the Air Marshal S.K. Aneke Hall of Fame at the Armed Forces Command and Staff College (AFCSC), Nigeria. It covers the founding and development of the NAF from 1961, every Commander and Chief of the Air Staff, the history of the AFCSC and its Department of Air Warfare, NAF bases and the aircraft the NAF has operated. Information is current as of ' + asOf + '. Biographies of the Chiefs of the Air Staff draw on the Nigerian Air Force (airforce.mil.ng) and Wikipedia. Where this document is silent on a point, treat that point as not covered rather than inferring it.');
 
 H1('Key facts');
 if (founded) L('- Established: ' + founded.date + '. ' + clean(founded.text.join(' ')));
 L('- Leadership: ' + C.chiefs.length + ' heads of service to date. The first two (' + C.chiefs[0].name + ' and ' + C.chiefs[1].name + ') were German Air Force officers who served as Commanders of the NAF; from ' + fmt(C.chiefs[2].from) + ' the service has been led by Nigerian officers.');
-if (serving) L('- Serving Chief of the Air Staff: ' + serving.name + ', the ' + ordinalWord(serving.no) + ' head of the service, in office since ' + fmt(serving.from) + '. The Hall of Fame at AFCSC Jaji is named after him.');
+if (serving) L('- Serving Chief of the Air Staff: ' + serving.name + ', the ' + ordinalWord(serving.no) + ' head of the service, in office since ' + fmt(serving.from) + '. The Hall of Fame at AFCSC, Nigeria is named after him.');
 if (hq) L('- Headquarters: ' + hq.city + ' (' + clean(hq.role) + ').');
 L('- Commands: Tactical Air Command (Makurdi), Special Operations Command (Bauchi), Mobility Command (Yenagoa), Air Training Command (Kaduna), Ground Training Command (Enugu) and Logistics Command (Lagos).');
 L('- Birthplace of the NAF: Kaduna, where the first base was built from 1964.');
@@ -91,7 +91,7 @@ C.chiefs.forEach((c) => {
 
 ['college', 'daw'].forEach((key) => {
   const ch = C.chronicles[key];
-  H1(ch.title + (key === 'daw' ? ', AFCSC Jaji' : ': ' + ch.eyebrow));
+  H1(ch.title + (key === 'daw' ? ', AFCSC, Nigeria' : ': ' + ch.eyebrow));
   L(clean(ch.intro));
   ch.items.forEach((it) => {
     H3(it.date + ' — ' + clean(it.title));

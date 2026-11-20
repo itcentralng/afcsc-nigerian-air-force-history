@@ -56,7 +56,7 @@ const content = {
     title: 'Air Marshal S.K. Aneke Hall of Fame',
     kicker: 'Nigerian Air Force · Established 1964',
     subtitle: 'Our History',
-    host: 'Armed Forces Command and Staff College, Jaji',
+    host: 'Armed Forces Command and Staff College, Nigeria',
     tagline: 'Six decades of Nigerian airpower: the people, the aircraft and the moments that built the Nigerian Air Force.',
     source: 'https://aneke-hall-of-fame.netlify.app'
   },

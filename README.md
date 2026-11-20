@@ -1,6 +1,6 @@
 # Air Marshal S.K. Aneke Hall of Fame
 
-**History of the Nigerian Air Force · Armed Forces Command and Staff College, Jaji**
+**History of the Nigerian Air Force · Armed Forces Command and Staff College, Nigeria**
 
 Touch-screen kiosk telling the story of the Nigerian Air Force: the
 moments, the Chiefs of the Air Staff, the College, the Department of Air

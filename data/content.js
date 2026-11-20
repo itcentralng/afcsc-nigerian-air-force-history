@@ -16,7 +16,7 @@ window.HOF_CONTENT = {
     "title": "Air Marshal S.K. Aneke Hall of Fame",
     "kicker": "Nigerian Air Force · Established 1964",
     "subtitle": "Our History",
-    "host": "Armed Forces Command and Staff College, Jaji",
+    "host": "Armed Forces Command and Staff College, Nigeria",
     "tagline": "Six decades of Nigerian airpower: the people, the aircraft and the moments that built the Nigerian Air Force.",
     "source": "https://aneke-hall-of-fame.netlify.app"
   },
@@ -1368,14 +1368,14 @@ window.HOF_CONTENT = {
     {
       "year": 2026,
       "date": "2026",
-      "title": "The Air Marshal S.K. Aneke Hall of Fame opens at Jaji",
+      "title": "The Air Marshal S.K. Aneke Hall of Fame opens at the College in Nigeria",
       "text": [
-        "The Air Marshal S.K. Aneke Hall of Fame opens at the Armed Forces Command and Staff College, Jaji. You are standing in the newest chapter of the story."
+        "The Air Marshal S.K. Aneke Hall of Fame opens at the Armed Forces Command and Staff College, Nigeria. You are standing in the newest chapter of the story."
       ],
       "photos": [
         "assets/photos/06-timeline/2026-hall-of-fame-opening-jaji-building-context.jpg"
       ],
-      "caption": "On the College grounds at Jaji, September 2026",
+      "caption": "On the College grounds in Nigeria, September 2026",
       "state": "Kaduna"
     }
   ],
@@ -1713,7 +1713,7 @@ window.HOF_CONTENT = {
       "achievements": [
         "First NAF officer to attain the rank of Air Chief Marshal",
         "Air Force Institute of Technology established (March 2008)",
-        "Directing Staff, Armed Forces Command and Staff College, Jaji"
+        "Directing Staff, Armed Forces Command and Staff College, Nigeria"
       ],
       "sources": [
         "Wikipedia",
@@ -1950,9 +1950,9 @@ window.HOF_CONTENT = {
       "lat": 10.8,
       "role": "Armed Forces Command and Staff College",
       "photo": "assets/photos/02-bases/jaji-college-campus.jpg",
-      "caption": "The Armed Forces Command and Staff College campus, Jaji",
+      "caption": "The Armed Forces Command and Staff College campus in Nigeria",
       "text": [
-        "Jaji, north of Kaduna, is home to the Armed Forces Command and Staff College, established in 1976 so that officers of the Army, Navy and Air Force could learn to plan and command together at the operational level.",
+        "The Armed Forces Command and Staff College is in Nigeria, north of Kaduna, and was established in 1976 so that officers of the Army, Navy and Air Force could learn to plan and command together at the operational level.",
         "The Department of Air Warfare teaches airpower doctrine, air campaign planning and joint operations to every student of the College. The Air Marshal S.K. Aneke Hall of Fame stands here."
       ],
       "labelDy": -10
@@ -2430,7 +2430,7 @@ window.HOF_CONTENT = {
       "subtitle": "Graduation, 2014",
       "src": "assets/video/jaji.mp4",
       "section": "college",
-      "description": "A graduation at the Armed Forces Command and Staff College, Jaji."
+      "description": "A graduation at the Armed Forces Command and Staff College, Nigeria."
     },
     {
       "id": "lineage",
@@ -2444,9 +2444,9 @@ window.HOF_CONTENT = {
   "chronicles": {
     "college": {
       "id": "college",
-      "eyebrow": "Armed Forces Command and Staff College, Jaji",
+      "eyebrow": "Armed Forces Command and Staff College, Nigeria",
       "title": "History of the College",
-      "intro": "Established on 29 May 1976 with the help of the British Army Advisory Team, the College at Jaji trains tactical and operational level officers of the Army, Navy and Air Force in standardised command and staff duties.",
+      "intro": "Established on 29 May 1976 with the help of the British Army Advisory Team, the College in Nigeria trains tactical and operational level officers of the Army, Navy and Air Force in standardised command and staff duties.",
       "hero": "assets/college/college-hq.jpg",
       "heroCaption": "Former College HQ Complex",
       "items": [

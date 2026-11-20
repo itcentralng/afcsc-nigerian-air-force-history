@@ -1,6 +1,6 @@
 /* ============================================================
    AIR MARSHAL S.K. ANEKE HALL OF FAME — kiosk app logic
-   History of the Nigerian Air Force · AFCSC Jaji
+   History of the Nigerian Air Force · AFCSC, Nigeria
    Plain JavaScript, no build step, runs from file:// with no internet.
    All content comes from data/content.js (window.HOF_CONTENT).
    ============================================================ */
@@ -26,7 +26,7 @@
     films:    { n: '', nav: 'Films', kicker: 'Watch', title: 'The story on film' },
     timeline: { n: '01', nav: 'Nigerian Air Force', name: 'History of the Nigerian Air Force', kicker: '01 · History of the Nigerian Air Force', title: 'Six decades of service' },
     chiefs:   { n: '02', nav: 'Past Chiefs', name: 'Past Chiefs of the Air Staff', kicker: '02 · Past Chiefs of the Air Staff', title: 'The officers who led the service' },
-    college:  { n: '03', nav: 'The College', name: 'History of the College', kicker: '03 · History of the College', title: 'Armed Forces Command and Staff College, Jaji' },
+    college:  { n: '03', nav: 'The College', name: 'History of the College', kicker: '03 · History of the College', title: 'Armed Forces Command and Staff College, Nigeria' },
     daw:      { n: '04', nav: 'Air Warfare', name: 'History of the Department of Air Warfare', kicker: '04 · History of the Department of Air Warfare', title: 'Teaching airpower' },
     fleet:    { n: '05', nav: 'Fleet & Bases', kicker: 'Chapter 05 · Fleet and bases', title: 'Where the Air Force flies, and what it flies' },
     connect:  { n: '06', nav: 'Your link', kicker: 'Chapter 06 · Your connection', title: 'Where do you fit in the story?' },
@@ -426,7 +426,7 @@
             '<span class="attract-crest-text"><b>Nigerian Air Force</b><span>Established 18 April 1964</span></span>' +
             '<span class="attract-crest-rule"></span>' +
             '<img src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College" />' +
-            '<span class="attract-crest-text"><b>Armed Forces Command and Staff College</b><span>Jaji, Kaduna State</span></span>' +
+            '<span class="attract-crest-text"><b>Armed Forces Command and Staff College</b><span>Nigeria</span></span>' +
           '</div>' +
           '<div class="attract-clock"><span id="attract-date"></span><span class="attract-time" id="attract-time"></span></div>' +
         '</header>' +
@@ -507,7 +507,7 @@
     var rows = [
       { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: C.events.length + ' recorded moments from 1961 to today, decade by decade and year by year.' },
       { key: 'chiefs', img: portraitOf(LAST_PAST), desc: 'The ' + PAST.length + ' officers who led the service from ' + yr(PAST[0].from) + ' to ' + yr(LAST_PAST.to) + ', their tenures drawn to scale, and the story of each.' },
-      { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College at Jaji.' },
+      { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College in Nigeria.' },
       { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
     ];
     var nVisited = EXPLORE_KEYS.filter(function (k) { return state.visited[k]; }).length;
