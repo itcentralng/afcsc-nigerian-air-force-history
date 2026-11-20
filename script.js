@@ -16,7 +16,6 @@
   var IDLE_WARN_S = 10;          // seconds the prompt counts down before the welcome screen
   var YEAR_FIRST = 1961, YEAR_LAST = 2026;
   var YEAR_W = 132;              // px per year on the timeline ruler
-  var ATTRACT_SLIDE_MS = 7000;   // welcome-screen photo and fact rotation
   var HOME_FACT_MS = 9000;
   var AMBIENT_SRC = 'assets/audio/ambient.mp3'; // optional: drop a loop here to enable music
   var AMBIENT_VOLUME = 0.3, AMBIENT_DUCK = 0.05;
@@ -46,6 +45,7 @@
 
   var state = {
     screen: 'attract',
+    homeActive: 0,
     hist: [],
     decade: 0,
     year: null,
@@ -71,7 +71,7 @@
   var film = null;
   var lastTouch = Date.now();
   var idleLeft = 0;
-  var attractTimer = null, homeFactTimer = null;
+  var homeFactTimer = null;
   var ambient = null, ambientOn = true, ambientReady = false;
 
   // ============================================================
@@ -227,6 +227,7 @@
     play: '<svg viewBox="0 0 24 24"><path d="M7 5v14l12-7Z" fill="currentColor" stroke="none"/></svg>',
     next: '<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
     prev: '<svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>',
+    close: '<svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>',
     zoom: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M11 8.5v5M8.5 11h5"/></svg>',
     pin: '<svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg>',
     person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4 3.9-6.5 7.5-6.5s6.7 2.5 7.5 6.5"/></svg>',
@@ -361,12 +362,14 @@
     el.back.classList.toggle('hidden', !label);
     if (label) $('btn-back-label').textContent = label;
   }
-  function goHome() { state.hist = []; state.screen = 'home'; state.year = null; state.cmode = null; state.cval = null; show(); }
+  function goHome() { state.hist = []; state.screen = 'home'; state.homeActive = 0; state.year = null; state.cmode = null; state.cval = null; show(); }
 
   function show() {
     var id = state.screen;
     Object.keys(el.screens).forEach(function (k) { el.screens[k].classList.toggle('active', k === id); });
     el.topbar.classList.toggle('hidden', id === 'attract');
+    el.sectionDock.classList.toggle('hidden', id === 'attract' || id === 'home' || EXPLORE_KEYS.indexOf(id) < 0);
+    document.querySelector('.stage').classList.toggle('attract-mode', id === 'attract');
     renderBack();
     $('btn-home').classList.toggle('is-here', id === 'home');
     lists = {};
@@ -378,16 +381,39 @@
     }
     document.querySelectorAll('.screen:not(.active) video').forEach(function (v) { v.pause(); });
     renderChapters();
-    if (id === 'attract') startAttract(); else stopAttract();
     if (id === 'home') startHomeFacts(); else stopHomeFacts();
   }
 
   function renderChapters() {
     var cur = state.screen === 'chief' ? 'chiefs' : state.screen;
-    el.chapters.innerHTML = EXPLORE_KEYS.map(function (k) {
-      return '<button class="chapter' + (k === cur ? ' is-on' : '') + (state.visited[k] ? ' is-visited' : '') + '" data-act="go" data-arg="' + k + '">' +
-        '<span class="chapter-n">' + (SECTIONS[k].n ? esc(SECTIONS[k].n) : ICON.play) + '</span><span class="chapter-l">' + esc(SECTIONS[k].nav) + '</span></button>';
-    }).join('');
+    var sec = SECTIONS[cur];
+    el.chapters.className = 'chapters topbar-section' + (cur === 'home' ? ' invisible' : '');
+    el.chapters.innerHTML = sec
+      ? '<span class="topbar-section-n">' + esc(sec.n) + '</span><span class="topbar-section-rule"></span><span class="topbar-section-title">' + esc(sec.name || sec.nav) + '</span>'
+      : '';
+    renderSectionDock(cur);
+  }
+
+  function renderSectionDock(cur) {
+    var idx = EXPLORE_KEYS.indexOf(cur);
+    var prev = idx > 0 ? EXPLORE_KEYS[idx - 1] : null;
+    var next = idx >= 0 && idx < EXPLORE_KEYS.length - 1 ? EXPLORE_KEYS[idx + 1] : null;
+    var html = '<button class="dock-edge dock-prev" data-act="go" data-arg="' + (prev || 'home') + '">' +
+      '<span class="dock-edge-icon">' + ICON.prev + '</span><span class="dock-edge-text"><span class="dock-edge-kicker">Previous</span><span class="dock-edge-title">' +
+      esc(prev ? (SECTIONS[prev].nav || SECTIONS[prev].name) : 'Welcome') + '</span></span></button>';
+    html += '<div class="dock-galleries">';
+    EXPLORE_KEYS.forEach(function (k) {
+      var active = k === cur;
+      var sec = SECTIONS[k];
+      html += '<button class="dock-gallery' + (active ? ' is-on' : '') + '" data-act="go" data-arg="' + k + '" ' + (active ? 'aria-current="page"' : '') + '>' +
+        (active ? '<span class="dock-active-line"></span><span class="dock-plane">' + ICON.plane + '</span>' : '') +
+        '<span class="dock-gallery-n">' + esc(sec.n) + '</span><span class="dock-gallery-title">' + esc(sec.nav) + '</span></button>';
+    });
+    html += '</div>';
+    html += '<button class="dock-edge dock-next"' + (next ? ' data-act="go" data-arg="' + next + '"' : ' disabled') + '>' +
+      '<span class="dock-edge-text"><span class="dock-edge-kicker">Next</span><span class="dock-edge-title">' +
+      esc(next ? (SECTIONS[next].nav || SECTIONS[next].name) : '—') + '</span></span><span class="dock-edge-icon">' + ICON.next + '</span></button>';
+    el.sectionDock.innerHTML = html;
   }
 
   // ============================================================
@@ -396,154 +422,140 @@
   var RENDER = {}, AFTER = {};
 
   // ---------- Welcome (attract) ----------
-  var attractFacts = C.events.filter(function (e) { return /\d{1,2} [A-Z][a-z]+ \d{4}/.test(e.date) || e.photos; });
-  var attractPhotos = (function () {
-    var pool = [];
-    C.events.forEach(function (e) { if (e.photos && e.photos[0]) pool.push(e.photos[0]); });
-    return shuffle(pool).slice(0, 14);
-  })();
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-  function onThisDay() {
-    var now = new Date(), key = now.getDate() + ' ' + MONTHS[now.getMonth()];
-    return C.events.filter(function (e) { return e.date.indexOf(key + ' ') === 0; });
-  }
 
   RENDER.attract = function () {
     var now = new Date(), years = now.getFullYear() - 1964;
-    var lights = '';
-    for (var i = 0; i < 26; i++) lights += '<span class="runway-light" style="animation-delay:' + (i * 0.09).toFixed(2) + 's"></span>';
+    var tickMarks = '';
+    for (var tick = 0; tick < 72; tick++) {
+      var major = tick % 18 === 0;
+      var length = tick % 6 === 0 ? 575 : 562;
+      tickMarks += '<line x1="0" y1="-552" x2="0" y2="' + -length + '" class="' + (major ? 'radar-major' : '') + '" transform="rotate(' + (tick * 5) + ')"></line>';
+    }
     return '' +
       '<div class="attract" data-act="begin">' +
-        '<div class="attract-slides" id="attract-slides">' +
-          '<div class="attract-slide"></div><div class="attract-slide"></div>' +
+        '<div class="welcome-glow" aria-hidden="true"></div>' +
+        '<div class="welcome-grain" aria-hidden="true"></div>' +
+        '<div class="welcome-radar" aria-hidden="true">' +
+          '<div class="welcome-radar-sweep"></div>' +
+          '<svg viewBox="-600 -600 1200 1200">' +
+            '<circle r="170"></circle><circle r="270" class="radar-dashed"></circle>' +
+            '<circle r="390"></circle><circle r="530" class="radar-dashed"></circle>' +
+            '<g class="radar-ticks">' + tickMarks + '<path d="M-600 0H600M0-600V600"></path></g>' +
+          '</svg>' +
         '</div>' +
-        '<video class="attract-video" id="attract-video" muted loop playsinline autoplay src="' + esc(C.introFilm) + '"></video>' +
-        '<div class="attract-shade"></div>' +
-
-        '<header class="attract-bar">' +
-          '<div class="attract-crests">' +
-            '<img src="assets/icons/naf.png" alt="Nigerian Air Force" />' +
-            '<span class="attract-crest-text"><b>Nigerian Air Force</b><span>Established 18 April 1964</span></span>' +
-            '<span class="attract-crest-rule"></span>' +
-            '<img src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College" />' +
-            '<span class="attract-crest-text"><b>Armed Forces Command and Staff College</b><span>Nigeria</span></span>' +
+        '<svg class="welcome-flight" viewBox="0 0 1920 1080" aria-hidden="true">' +
+          '<path class="flight-trail" d="M-480 520C260 330 610 300 980 430S1700 820 2250 860"></path>' +
+          '<g class="flight-plane">' +
+            '<animateMotion dur="11s" begin=".35s" repeatCount="indefinite" rotate="auto" path="M-480 520C260 330 610 300 980 430S1700 820 2250 860"></animateMotion>' +
+            '<image href="assets/aircraft/a-29-flypast.png" x="-306" y="-204" width="612" height="408"></image>' +
+          '</g>' +
+        '</svg>' +
+        '<div class="welcome-corner welcome-corner--top">' +
+          '<span class="welcome-index">01</span><span class="welcome-rule"></span><span class="welcome-eyebrow">Welcome</span>' +
+        '</div>' +
+        '<button class="welcome-close" data-act="close-app" aria-label="Close experience">' + ICON.close + '<span>Close</span></button>' +
+        '<div class="welcome-composition">' +
+          '<div class="welcome-crest-wrap">' +
+            '<svg class="welcome-crest-ring" viewBox="-100 -100 200 200" aria-hidden="true"><circle r="96"></circle><circle r="88"></circle></svg>' +
+            '<img class="welcome-crest" src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College, Nigeria" />' +
           '</div>' +
-          '<div class="attract-clock"><span id="attract-date"></span><span class="attract-time" id="attract-time"></span></div>' +
-        '</header>' +
-
-        '<div class="attract-hero">' +
-          '<div class="attract-kicker">SK Aneke Hall of Fame · Department of Air Warfare</div>' +
-          '<h1 class="attract-title">History</h1>' +
-          '<p class="attract-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
-          '<div class="attract-figures">' +
-            figure(String(years), 'years of service') +
-            figure(String(PAST.length), 'past Chiefs') +
-            figure(String(C.events.length), 'recorded moments') +
-            figure(String(now.getFullYear() - 1976), 'years of the College') +
-          '</div>' +
+          '<p class="welcome-college">Armed Forces Command and Staff College, Jaji</p>' +
+          '<div class="welcome-department"><span></span><b>Department of Air Warfare</b><span></span></div>' +
+          '<h1 class="welcome-title"><i>The</i><span>History</span><span>Experience</span></h1>' +
+          '<p class="welcome-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
+          '<button class="welcome-enter" data-act="begin"><span>Enter Experience</span><span class="welcome-enter-icon">' + ICON.next + '</span></button>' +
+          '<nav class="welcome-links" aria-label="Go straight to a chapter">' +
+            EXPLORE_KEYS.map(function (k, i) {
+              return (i ? '<span class="welcome-link-dot"></span>' : '') +
+                '<button data-act="go" data-arg="' + k + '">' + esc(SECTIONS[k].nav) + '</button>';
+            }).join('') +
+          '</nav>' +
         '</div>' +
-
-        '<aside class="attract-card" id="attract-card"></aside>' +
-
-        '<div class="attract-begin">' +
-          '<div class="runway">' + lights + '</div>' +
-          '<div class="attract-begin-label"><span>Touch anywhere to begin</span>' + ICON.next + '</div>' +
-        '</div>' +
+        '<div class="welcome-footer welcome-footer--left"><span class="welcome-eyebrow">Jaji · Kaduna State · Nigeria</span><span>10°49′N · 007°35′E</span></div>' +
+        '<div class="welcome-footer welcome-footer--right"><span class="welcome-eyebrow">Air Faculty established</span><strong>16 March 1978</strong></div>' +
       '</div>';
   };
-  function figure(n, label) { return '<div class="figure"><span class="figure-n">' + n + '</span><span class="figure-l">' + label + '</span></div>'; }
-  AFTER.attract = function (root) {
-    var v = root.querySelector('#attract-video');
-    v.addEventListener('error', function () { v.classList.add('hidden'); });
-    v.addEventListener('playing', function () { root.querySelector('.attract').classList.add('has-video'); });
-    var p = v.play(); if (p && p.catch) p.catch(function () {});
-  };
-  var attractIdx = 0;
-  function startAttract() {
-    stopAttract();
-    attractIdx = 0;
-    stepAttract();
-    attractTimer = setInterval(stepAttract, ATTRACT_SLIDE_MS);
-  }
-  function stopAttract() {
-    clearInterval(attractTimer); attractTimer = null;
-    var v = $('attract-video');
-    if (v && state.screen !== 'attract') v.pause();
-  }
-  function stepAttract() {
-    var slides = document.querySelectorAll('#attract-slides .attract-slide');
-    if (slides.length === 2 && attractPhotos.length) {
-      var incoming = slides[attractIdx % 2], outgoing = slides[(attractIdx + 1) % 2];
-      incoming.style.backgroundImage = 'url("' + attractPhotos[attractIdx % attractPhotos.length] + '")';
-      incoming.classList.remove('on'); void incoming.offsetWidth; incoming.classList.add('on');
-      outgoing.classList.remove('on');
-    }
-    var now = new Date();
-    var dEl = $('attract-date'), tEl = $('attract-time');
-    if (dEl) dEl.textContent = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()] + ', ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
-    if (tEl) tEl.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-    var card = $('attract-card');
-    if (card) {
-      var today = onThisDay();
-      var e = today.length && attractIdx % 3 === 0 ? today[(attractIdx / 3) % today.length] : attractFacts[Math.floor(Math.random() * attractFacts.length)];
-      var label = today.indexOf(e) >= 0 ? 'On this day' : 'From the archive';
-      var ph = e.photos && e.photos[0];
-      card.classList.remove('on');
-      setTimeout(function () {
-        card.innerHTML = (ph ? frame(ph, 'attract-card-img') : '') +
-          '<span class="attract-card-body"><span class="eyebrow">' + label + '</span>' +
-          '<span class="attract-card-date">' + esc(e.date) + '</span>' +
-          '<span class="attract-card-title">' + esc(e.title) + '</span></span>' +
-          '<span class="attract-card-progress"></span>';
-        card.classList.add('on');
-      }, 450);
-    }
-    attractIdx++;
-  }
-
-  // ---------- Home: a contents page over the intro film ----------
+  // ---------- Home: four-section Era Explorer ----------
   RENDER.home = function () {
-    var intro = filmById('intro');
-    var rows = [
-      { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: C.events.length + ' recorded moments from 1961 to today, decade by decade and year by year.' },
-      { key: 'chiefs', img: portraitOf(LAST_PAST), desc: 'The ' + PAST.length + ' officers who led the service from ' + yr(PAST[0].from) + ' to ' + yr(LAST_PAST.to) + ', their tenures drawn to scale, and the story of each.' },
-      { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College in Nigeria.' },
-      { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
-    ];
-    var nVisited = EXPLORE_KEYS.filter(function (k) { return state.visited[k]; }).length;
-    var collage = shuffle(ARCHIVE.filter(function (a) { return a.group === 'timeline'; })).slice(0, 4);
-    var lights = EXPLORE_KEYS.map(function (k) { return '<span class="progress-light' + (state.visited[k] ? ' is-on' : '') + '"></span>'; }).join('');
+    var timelineEvents = C.events.filter(function (e) { return e.photos && e.photos.length; });
+    var timelinePhotos = [];
+    [1964, 1975, 2024].forEach(function (y) {
+      var e = eventsInYear(y)[0]; if (e && e.photos && e.photos[0]) timelinePhotos.push(e.photos[0]);
+    });
+    var collegeItems = C.chronicles.college.items || [];
+    var dawItems = C.chronicles.daw.items || [];
 
-    return '' +
-      '<div class="home">' +
-        (intro ? '<video class="home-video" muted loop playsinline autoplay src="' + esc(intro.src) + '"></video>' : '') +
-        '<div class="home-shade"></div>' +
-        '<div class="home-left">' +
-          '<header class="masthead masthead--home"><div class="masthead-kicker">Welcome to SK Aneke Hall of Fame</div>' +
-            '<h1 class="masthead-title">Explore the history</h1>' +
-            '<p class="masthead-lede">' + esc(C.meta.tagline) + ' Choose one of the four sections, or begin with the film.</p></header>' +
-          (intro ? '<button class="home-film" data-act="film" data-arg="intro">' +
-            '<span class="home-film-play">' + ICON.play + '</span>' +
-            '<span class="home-film-text"><span class="eyebrow">Start here' + (intro.duration ? ' · ' + esc(intro.duration) : '') + '</span><span class="home-film-title">' + esc(intro.title) + '</span></span>' +
-          '</button>' : '') +
-          '<div class="home-fact" id="home-fact"></div>' +
-          '<div class="home-progress"><div class="progress-lights">' + lights + '</div>' +
-            '<span>' + (nVisited === 0 ? EXPLORE_KEYS.length + ' sections to explore' : nVisited === EXPLORE_KEYS.length ? 'All four sections explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' sections explored') + '</span></div>' +
+    var sections = [
+      {
+        key: 'timeline', roman: 'I', name: 'History of the Nigerian Air Force', short: 'Nigerian Air Force',
+        range: '1961 – 2026', cover: timelinePhotos[0] || firstPhoto(timelineEvents),
+        photos: timelinePhotos.slice(1), summary: C.meta.tagline,
+        highlights: [
+          ['18 April 1964', 'The Nigerian Air Force is formally established'],
+          ['1975 – 1978', 'MiG-21 fighters and the Technical Training School'],
+          ['2024 – 2026', 'Diamond Jubilee and a new generation of aircraft']
+        ]
+      },
+      {
+        key: 'chiefs', roman: 'II', name: 'Past Chiefs of the Air Staff', short: 'Past Chiefs',
+        range: yr(PAST[0].from) + ' – ' + yr(LAST_PAST.to), cover: portraitOf(LAST_PAST),
+        photos: PAST.slice(-3).reverse().map(function (c) { return portraitOf(c); }),
+        summary: 'The ' + PAST.length + ' officers who led the service, their tenures and the defining moments of their commands.',
+        highlights: PAST.slice(-3).reverse().map(function (c) { return [chiefYears(c), c.name]; })
+      },
+      {
+        key: 'college', roman: 'III', name: 'History of the College', short: 'The College',
+        range: '1976 – Today', cover: C.chronicles.college.hero,
+        photos: collegeItems.slice(0, 3).map(function (it) { return (it.photos || [])[0] || C.chronicles.college.hero; }),
+        summary: 'From the Army Command and Staff College of 1976 to today’s tri-service Armed Forces Command and Staff College.',
+        highlights: collegeItems.slice(0, 3).map(function (it) { return [it.date, it.title]; })
+      },
+      {
+        key: 'daw', roman: 'IV', name: 'History of the Department of Air Warfare', short: 'Air Warfare',
+        range: '1978 – Today', cover: C.chronicles.daw.hero,
+        photos: dawItems.slice(0, 3).map(function (it) { return (it.photos || [])[0] || C.chronicles.daw.hero; }),
+        summary: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.',
+        highlights: dawItems.slice(0, 3).map(function (it) { return [it.date, it.title]; })
+      }
+    ];
+
+    return '<div class="era-home">' + sections.map(function (s, i) {
+      var active = i === state.homeActive;
+      var photoStrip = s.photos.slice(0, 4).map(function (p) {
+        return '<span class="era-thumb">' + frame(p, 'era-thumb-frame') + '</span>';
+      }).join('');
+      var highlights = s.highlights.map(function (h) {
+        return '<button class="era-highlight" data-act="go" data-arg="' + s.key + '">' +
+          '<span class="era-highlight-date">' + esc(h[0]) + '</span>' +
+          '<span class="era-highlight-title">' + esc(h[1]) + '</span>' + ICON.next + '</button>';
+      }).join('');
+      return '<section class="era-panel' + (active ? ' era-panel--active' : ' era-panel--collapsed') + '" data-home-index="' + i + '" aria-label="' + esc(s.name) + '">' +
+        '<button class="era-collapsed" data-act="home-panel" data-arg="' + i + '">' +
+          '<span class="era-cover">' + frame(s.cover, 'era-cover-frame') + '</span>' +
+          '<span class="era-collapsed-shade"></span>' +
+          '<span class="era-roman">' + s.roman + '</span>' +
+          '<span class="era-vertical">' + esc(s.name) + '</span>' +
+          '<span class="era-collapsed-bottom"><span class="era-range">' + esc(s.range) + '</span><span class="era-open">' + ICON.next + '</span></span>' +
+        '</button>' +
+        '<div class="era-expanded">' +
+        '<div class="era-expanded-media">' +
+          '<button class="era-main-photo" data-act="go" data-arg="' + s.key + '">' + frame(s.cover, 'era-main-frame') + '</button>' +
+          '<span class="era-main-roman">' + s.roman + '</span>' +
+          '<div class="era-photo-strip">' + photoStrip + '</div>' +
         '</div>' +
-        '<nav class="contents">' + rows.map(function (r, i) {
-          var sec = SECTIONS[r.key];
-          var thumb = r.map ? '<span class="contents-thumb contents-thumb--map">' + nigeriaSvg([], null, true) + '</span>'
-            : r.collage ? '<span class="contents-thumb contents-thumb--collage">' + collage.map(function (a) { return frame(a.src, 'contents-cell'); }).join('') + '</span>'
-            : frame(r.img, 'contents-thumb');
-          return '<button class="contents-row' + (state.visited[r.key] ? ' is-visited' : '') + '" data-act="go" data-arg="' + r.key + '" style="animation-delay:' + (i * 70) + 'ms">' +
-            '<span class="contents-n">' + esc(sec.n) + '</span>' +
-            '<span class="contents-text"><span class="contents-title">' + esc(sec.name || sec.nav) + '</span>' +
-              '<span class="contents-desc">' + esc(r.desc) + '</span></span>' +
-            thumb +
-            '<span class="contents-go">' + (state.visited[r.key] ? ICON.check : ICON.next) + '</span>' +
-          '</button>';
-        }).join('') + '</nav>' +
-      '</div>';
+        '<div class="era-expanded-content">' +
+          '<div class="era-kicker">Section ' + s.roman + ' · ' + esc(s.range) + '</div>' +
+          '<h1>' + esc(s.short) + '</h1>' +
+          '<div class="era-rule"></div>' +
+          '<p class="era-summary">' + esc(s.summary) + '</p>' +
+          '<div class="era-highlights-label">Highlights</div>' +
+          '<div class="era-highlights">' + highlights + '</div>' +
+          '<button class="era-explore" data-act="go" data-arg="' + s.key + '"><span>Explore this section</span><span class="era-explore-icon">' + ICON.next + '</span></button>' +
+        '</div>' +
+        '</div>' +
+      '</section>';
+    }).join('') + '</div>';
   };
   AFTER.home = function (root) {
     var v = root.querySelector('.home-video');
@@ -1205,7 +1217,7 @@
     idleLeft = 0;
     if (film) closeFilm();
     closeLightbox();
-    Object.assign(state, { screen: 'attract', hist: [], decade: 0, year: null, rulerX: 0, chief: 1, chiefStripX: 0, fleetTab: 'bases', base: 'kaduna', era: 'all', cmode: null, cval: null, cdecade: 1980, archive: 'all', visited: {}, watched: {}, big: false, reach: false });
+    Object.assign(state, { screen: 'attract', homeActive: 0, hist: [], decade: 0, year: null, rulerX: 0, chief: 1, chiefStripX: 0, fleetTab: 'bases', base: 'kaduna', era: 'all', cmode: null, cval: null, cdecade: 1980, archive: 'all', visited: {}, watched: {}, big: false, reach: false });
     applyPrefs();
     if (ambient) ambient.pause();
     show();
@@ -1223,6 +1235,14 @@
   var ACTIONS = {
     begin: function () { state.hist = []; go('home'); startAmbient(); },
     home: goHome,
+    'home-panel': function (arg) {
+      var i = +arg;
+      state.homeActive = i;
+      document.querySelectorAll('.era-panel').forEach(function (panel, n) {
+        panel.classList.toggle('era-panel--active', n === i);
+        panel.classList.toggle('era-panel--collapsed', n !== i);
+      });
+    },
     back: goBack,
     go: function (arg) { var p = arg.split(':'); go(p[0], p[1] ? { fleetTab: p[1] } : (p[0] === 'timeline' ? { year: null } : null)); },
     decade: function (arg) { step({ decade: +arg, year: null }); },
@@ -1282,6 +1302,7 @@
     el.stage = $('stage');
     el.topbar = $('topbar');
     el.chapters = $('chapters');
+    el.sectionDock = $('section-dock');
     el.back = $('btn-back');
     el.sound = $('btn-sound');
     el.lightbox = $('lightbox');
