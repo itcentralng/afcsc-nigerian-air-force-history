@@ -86,6 +86,42 @@ After 90 seconds without a touch a "Still exploring?" prompt counts down
 10 seconds, then the kiosk resets to the welcome screen (it waits while a film
 is playing). Timings are at the top of `script.js`.
 
+## Motion
+
+The kiosk carries the flight-curtain motion language of the AFCSC exhibition,
+dressed in this app's green, gold and ivory. All of it is decorative and is
+built at runtime by `script.js`, so `index.html` and `data/content.js` are
+untouched.
+
+- **Flight curtain**: every change of screen is covered by a gold panel chased
+  by a green one carrying a jet, two contrails and the chapter number and
+  title, about 0.6 s each way. Steps *inside* a page (a decade, a year, the
+  next Chief) change in place, without the curtain.
+- **Top bar**: the gold underline grows under the open chapter and a small jet
+  taxis along the bar to it, turning to face the way it travelled.
+- **Welcome**: a radar field turns behind the title, three gold and ivory
+  dotted flight paths draw themselves in, and two aircraft fly past (one near,
+  one far) trailing gold dotted contrails — all of it behind the text. The
+  crests blur in, the title is clip-revealed, the figures rise, and the "Touch
+  anywhere to begin" row pulses.
+- **Pages**: cards and links fade and lift as they scroll into view; the
+  skyline bars grow from the baseline; a gold jet marks the year selected on
+  the ruler; the lineage draws itself and a jet sweeps the bar to the present;
+  portraits pan slowly inside their frames.
+- **Standby**: the "Still exploring?" prompt shows the crest, a floating jet
+  and a gold rule while it counts down.
+
+Reduced motion is respected: with `prefers-reduced-motion: reduce` the curtain,
+radar, flight paths and flypasts are switched off and every entrance becomes a
+plain appearance, so the kiosk behaves as it did before.
+
+Three things were **moved** to make room for the motion (nothing added or
+removed): the welcome title block sits on a 268 px baseline with the archive
+card aligned to its lede; on Home the four progress lights head the list of
+chapters instead of closing the left column; and on the College and Air Warfare
+pages the "Continue" button sits under the masthead, so the way forward is
+always in view.
+
 ## Running on the kiosk
 
 1. Copy the whole folder onto the kiosk PC, including `assets/`.

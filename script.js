@@ -363,7 +363,7 @@
   }
   function goHome() { state.hist = []; state.screen = 'home'; state.year = null; state.cmode = null; state.cval = null; show(); }
 
-  function show() {
+  function showScreen() {
     var id = state.screen;
     Object.keys(el.screens).forEach(function (k) { el.screens[k].classList.toggle('active', k === id); });
     el.topbar.classList.toggle('hidden', id === 'attract');
@@ -388,6 +388,8 @@
       return '<button class="chapter' + (k === cur ? ' is-on' : '') + (state.visited[k] ? ' is-visited' : '') + '" data-act="go" data-arg="' + k + '">' +
         '<span class="chapter-n">' + (SECTIONS[k].n ? esc(SECTIONS[k].n) : ICON.play) + '</span><span class="chapter-l">' + esc(SECTIONS[k].nav) + '</span></button>';
     }).join('');
+    if (motion.jet) el.chapters.appendChild(motion.jet);
+    positionTabJet(cur);
   }
 
   // ============================================================
@@ -457,6 +459,7 @@
     v.addEventListener('error', function () { v.classList.add('hidden'); });
     v.addEventListener('playing', function () { root.querySelector('.attract').classList.add('has-video'); });
     var p = v.play(); if (p && p.catch) p.catch(function () {});
+    buildWelcomeMotion(root);
   };
   var attractIdx = 0;
   function startAttract() {
@@ -527,10 +530,11 @@
             '<span class="home-film-text"><span class="eyebrow">Start here' + (intro.duration ? ' · ' + esc(intro.duration) : '') + '</span><span class="home-film-title">' + esc(intro.title) + '</span></span>' +
           '</button>' : '') +
           '<div class="home-fact" id="home-fact"></div>' +
+        '</div>' +
+        '<nav class="contents">' +
           '<div class="home-progress"><div class="progress-lights">' + lights + '</div>' +
             '<span>' + (nVisited === 0 ? EXPLORE_KEYS.length + ' sections to explore' : nVisited === EXPLORE_KEYS.length ? 'All four sections explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' sections explored') + '</span></div>' +
-        '</div>' +
-        '<nav class="contents">' + rows.map(function (r, i) {
+          rows.map(function (r, i) {
           var sec = SECTIONS[r.key];
           var thumb = r.map ? '<span class="contents-thumb contents-thumb--map">' + nigeriaSvg([], null, true) + '</span>'
             : r.collage ? '<span class="contents-thumb contents-thumb--collage">' + collage.map(function (a) { return frame(a.src, 'contents-cell'); }).join('') + '</span>'
@@ -700,6 +704,7 @@
     r.addEventListener('scroll', function () { state.rulerX = r.scrollLeft; });
     var target = state.year != null ? state.year : C.decades[state.decade].from + 4;
     glideTo(r, 'x', (target - YEAR_FIRST) * YEAR_W, 700);
+    markRulerYear(root);
   };
 
   function filmButton(f) {
@@ -769,6 +774,7 @@
     var strip = root.querySelector('#chief-strip');
     if (state.chiefStripX) strip.scrollLeft = state.chiefStripX;
     strip.addEventListener('scroll', function () { state.chiefStripX = strip.scrollLeft; });
+    sweepLineage(root);
   };
 
   RENDER.chief = function () {
@@ -841,12 +847,12 @@
       '<div class="chron">' +
         '<div class="chron-left">' +
           masthead(key, ch.intro) +
+          '<button class="ghost-btn chron-switch" data-act="go" data-arg="' + (key === 'college' ? 'daw' : 'college') + '">' + (key === 'college' ? 'Continue: the Department of Air Warfare' : 'Back to the history of the College') + ICON.next + '</button>' +
           (ch.hero ? '<button class="chron-hero"' + zoomAttrs(lk, 0) + '>' + frame(ch.hero, 'chron-hero-frame') + '<span class="chron-hero-cap">' + esc(ch.heroCaption || '') + '</span></button>' : '') +
           '<div class="chron-foot">' +
             '<span class="chron-count">' + plural(ch.items.length, 'milestone') + ' · ' + esc(ch.items[0].date) + ' – ' + esc(ch.items[ch.items.length - 1].date) + '</span>' +
             (f ? filmButton(f) : '') +
           '</div>' +
-          '<button class="ghost-btn chron-switch" data-act="go" data-arg="' + (key === 'college' ? 'daw' : 'college') + '">' + (key === 'college' ? 'Continue: the Department of Air Warfare' : 'Back to the history of the College') + ICON.next + '</button>' +
         '</div>' +
         '<div class="chron-right" data-scroll="y"><div class="chron-spine"></div>' + items + '<div class="chron-end">' + ICON.plane + '</div></div>' +
       '</div>';
@@ -1276,6 +1282,455 @@
   }
 
   // ============================================================
+  // MOTION — the flight-curtain language of the AFCSC exhibition
+  // Everything below is decorative. The layers are built here at
+  // runtime, so the markup, copy and content stay exactly as they are.
+  // ============================================================
+
+  var MOTION_COVER_MS = 580;
+  var MOTION_REVEAL_MS = 780;
+  var JET_SHAPES = [
+    'M2 30 C10 26.5 28 25.2 46 25 L104 26 L116 21.5 L119 21.5 L115 29 L115 31 L119 38.5 L116 38.5 L104 34 L46 35 C28 34.8 10 33.5 2 30 Z',
+    'M42 26 L72 3 L81 3 L68 26 Z',
+    'M42 34 L72 57 L81 57 L68 34 Z',
+    'M96 26.3 L107 13 L112.5 13 L107.5 27 Z',
+    'M96 33.7 L107 47 L112.5 47 L107.5 33 Z'
+  ];
+  // Two welcome flypasts: a near pass across the title block, and a distant one
+  // along the top of the sky that comes round again.
+  var FLIGHT_INTRO = 'M 2250 860 C 1700 820 1350 560 980 430 S 260 330 -480 520';
+  var FLIGHT_AMBIENT = 'M -400 210 C 300 120 900 250 1400 150 S 2000 120 2350 60';
+  var DECOR_PATHS = [
+    'M -60 900 C 380 800 700 980 1120 880 S 1640 700 1990 760',
+    'M -60 240 C 300 160 620 280 980 190',
+    'M 1240 1010 C 1420 930 1620 990 1990 880'
+  ];
+  // The cards and links that fade up as they scroll into view.
+  var REVEAL_SELECTORS = {
+    home: '.contents-row',
+    timeline: '.event, .year-card',
+    chiefs: '.chief-card',
+    chief: '.meta, .mini-event',
+    college: '.chron-item',
+    daw: '.chron-item',
+    films: '.film-card',
+    archive: '.archive-cell'
+  };
+
+  var motion = {
+    reduced: false, curtain: null, curtainNum: null, curtainTitle: null, busy: false,
+    screens: null, jet: null, tabX: null, observer: null, current: 'attract',
+    intro: null, ambient: null
+  };
+  try { motion.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { motion.reduced = false; }
+
+  function make(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function jetSvg(cls, faceRight) {
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 120 60');
+    svg.setAttribute('aria-hidden', 'true');
+    if (cls) svg.setAttribute('class', cls);
+    // The silhouette is drawn nose-left; the group flips it for markers that fly right.
+    var g = document.createElementNS(NS, 'g');
+    if (faceRight) g.setAttribute('transform', 'translate(120 0) scale(-1 1)');
+    JET_SHAPES.forEach(function (d) {
+      var p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d);
+      g.appendChild(p);
+    });
+    svg.appendChild(g);
+    return svg;
+  }
+  function faceJet(svg, faceRight) {
+    var g = svg && svg.querySelector('g');
+    if (!g) return;
+    if (faceRight) g.setAttribute('transform', 'translate(120 0) scale(-1 1)');
+    else g.removeAttribute('transform');
+  }
+
+  /* ---------------- the flight curtain ---------------- */
+  function buildCurtain() {
+    var c = make('div', 'curtain');
+    c.setAttribute('aria-hidden', 'true');
+    var lead = make('div', 'curtain-panel curtain-panel--lead');
+    var main = make('div', 'curtain-panel curtain-panel--main');
+    main.appendChild(make('span', 'curtain-edge'));
+    main.appendChild(jetSvg('curtain-jet'));
+    main.appendChild(make('span', 'curtain-contrail curtain-contrail--a'));
+    main.appendChild(make('span', 'curtain-contrail curtain-contrail--b'));
+    var label = make('div', 'curtain-label');
+    motion.curtainNum = make('span', 'curtain-num', '01');
+    motion.curtainTitle = make('span', 'curtain-title', '');
+    label.appendChild(motion.curtainNum);
+    label.appendChild(motion.curtainTitle);
+    main.appendChild(label);
+    c.appendChild(lead);
+    c.appendChild(main);
+    el.stage.appendChild(c);
+    motion.curtain = c;
+  }
+
+  // The chapter number and title flown in on the curtain.
+  function curtainMeta(id) {
+    if (id === 'attract') return ['—', C.meta.title || 'History'];
+    if (id === 'home') return ['00', 'Hall of Fame'];
+    if (id === 'chief') return ['02', chiefByNo(state.chief).shortName];
+    var sec = SECTIONS[id];
+    if (!sec) return ['—', C.meta.title || 'History'];
+    return [sec.n || '—', sec.nav || sec.name];
+  }
+
+  function panelAnim(node, frames, opts) {
+    if (!node || !node.animate) return null;
+    try { return node.animate(frames, opts); } catch (e) { return null; }
+  }
+
+  function curtainNavigate(id) {
+    var c = motion.curtain;
+    var meta = curtainMeta(id);
+    var lead = c.querySelector('.curtain-panel--lead');
+    var main = c.querySelector('.curtain-panel--main');
+    var label = c.querySelector('.curtain-label');
+    var curve = 'cubic-bezier(0.76, 0, 0.24, 1)';
+
+    motion.busy = true;
+    motion.curtainNum.textContent = meta[0];
+    motion.curtainTitle.textContent = meta[1];
+    c.classList.add('is-active');
+
+    var coverLead = panelAnim(lead, [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
+      { duration: 460, easing: curve, fill: 'both' });
+    var coverMain = panelAnim(main, [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
+      { duration: 520, delay: 50, easing: curve, fill: 'both' });
+    var labelIn = panelAnim(label, [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 300, delay: 280, easing: 'ease-out', fill: 'both' });
+
+    setTimeout(function () {
+      renderScreen();
+      // Hold the new screen's entrance until the curtain is on its way out.
+      if (motion.screens) motion.screens.classList.add('motion-hold');
+
+      var revealLead = panelAnim(lead, [{ transform: 'translateX(0)' }, { transform: 'translateX(-101%)' }],
+        { duration: 600, delay: 100, easing: curve, fill: 'both' });
+      var revealMain = panelAnim(main, [{ transform: 'translateX(0)' }, { transform: 'translateX(-101%)' }],
+        { duration: 620, easing: curve, fill: 'both' });
+      var labelOut = panelAnim(label, [{ opacity: 1 }, { opacity: 0 }],
+        { duration: 240, easing: 'ease-in', fill: 'both' });
+      [coverLead, coverMain, labelIn].forEach(function (a) { if (a) a.cancel(); });
+
+      var release = function () { if (motion.screens) motion.screens.classList.remove('motion-hold'); };
+      if (window.requestAnimationFrame) requestAnimationFrame(function () { requestAnimationFrame(release); });
+      setTimeout(release, 180);
+
+      setTimeout(function () {
+        c.classList.remove('is-active');
+        [revealLead, revealMain, labelOut].forEach(function (a) { if (a) a.cancel(); });
+        motion.busy = false;
+      }, MOTION_REVEAL_MS);
+    }, MOTION_COVER_MS);
+  }
+
+  /* ---------------- rendering, through the curtain ---------------- */
+  function renderScreen() {
+    stopWelcomeFlights();
+    showScreen();
+    motion.current = state.screen;
+    if (state.screen === 'attract') startFlights();
+    var sel = REVEAL_SELECTORS[state.screen];
+    if (sel) revealIn(el.screens[state.screen], sel);
+  }
+
+  // Every screen change goes through the curtain; a step inside a screen
+  // (a decade, a year, the next Chief) and the reduced-motion mode do not.
+  function show() {
+    var target = state.screen;
+    if (!motion.reduced && motion.curtain && !motion.busy && target !== motion.current) curtainNavigate(target);
+    else renderScreen();
+  }
+
+  /* ---------------- the jet that taxis along the top bar ---------------- */
+  function buildChapterJet() {
+    motion.jet = jetSvg('chapter-jet', true);
+    el.chapters.appendChild(motion.jet);
+  }
+  function positionTabJet(section) {
+    var jet = motion.jet;
+    if (!jet) return;
+    var tab = el.chapters.querySelector('[data-arg="' + section + '"]');
+    if (!tab || !tab.offsetWidth) { jet.classList.remove('is-on'); return; }
+    var x = Math.round(tab.offsetLeft + tab.offsetWidth / 2 - 17);
+    faceJet(jet, motion.tabX === null ? true : x >= motion.tabX);
+    motion.tabX = x;
+    jet.style.transform = 'translateX(' + x + 'px)';
+    jet.classList.add('is-on');
+  }
+
+  /* ---------------- reveals as lists scroll into view ---------------- */
+  function revealIn(root, selector) {
+    if (!root || motion.reduced) return;
+    var nodes = root.querySelectorAll(selector);
+    if (!nodes.length) return;
+    var box = root.querySelector('[data-scroll="y"]') || root.querySelector('[data-scroll="x"]');
+    function markAll() { Array.prototype.forEach.call(nodes, function (n) { n.classList.add('is-in'); }); }
+    Array.prototype.forEach.call(nodes, function (n) { n.classList.add('is-reveal'); });
+    if (!('IntersectionObserver' in window) || (box && !box.clientHeight)) { markAll(); return; }
+    if (motion.observer) motion.observer.disconnect();
+    motion.observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-in');
+        motion.observer.unobserve(entry.target);
+      });
+    }, { root: box || null, rootMargin: '0px 0px -4% 0px', threshold: 0.04 });
+    Array.prototype.forEach.call(nodes, function (n) { motion.observer.observe(n); });
+    // If the observer never reports (an occluded or throttled window), anything
+    // already on screen is shown rather than left blank.
+    setTimeout(function () {
+      var host = box ? box.getBoundingClientRect() : { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth };
+      Array.prototype.forEach.call(nodes, function (n) {
+        if (n.classList.contains('is-in')) return;
+        var r = n.getBoundingClientRect();
+        if (r.bottom > host.top && r.top < host.bottom && r.right > host.left && r.left < host.right) n.classList.add('is-in');
+      });
+    }, 1200);
+  }
+
+  /* ---------------- welcome: radar, flight paths, flypasts ---------------- */
+  function radarMarkup() {
+    var rings = [170, 270, 390, 530].map(function (r, i) {
+      return '<circle class="radar-ring" cx="0" cy="0" r="' + r + '" pathLength="1" style="animation-delay:' +
+        (0.15 + i * 0.16).toFixed(2) + 's;stroke-opacity:' + (0.2 - i * 0.03).toFixed(3) + '"></circle>';
+    }).join('');
+    var ticks = '';
+    for (var d = 0; d < 360; d += 5) {
+      var outer = d % 30 === 0 ? 575 : 562;
+      ticks += '<line x1="0" y1="-552" x2="0" y2="-' + outer + '" transform="rotate(' + d + ')" stroke-opacity="' +
+        (d % 30 === 0 ? 0.34 : 0.16) + '"' + (d % 90 === 0 ? ' stroke="var(--gold)"' : '') + '></line>';
+    }
+    return '<svg viewBox="-600 -600 1200 1200" aria-hidden="true">' + rings +
+      '<g class="radar-ticks">' + ticks + '</g>' +
+      '<line class="radar-axis" x1="-600" y1="0" x2="600" y2="0"></line>' +
+      '<line class="radar-axis" x1="0" y1="-600" x2="0" y2="600"></line>' +
+      '</svg>';
+  }
+
+  // Dotted lines are revealed through a drawn mask, so the dot pattern survives the animation.
+  function decorMarkup() {
+    var defs = '', lines = '';
+    DECOR_PATHS.forEach(function (d, i) {
+      var id = 'hof-decor-' + i;
+      defs += '<mask id="' + id + '" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080">' +
+        '<path class="decor-reveal" pathLength="1" d="' + d + '" style="animation-delay:' + (0.5 + i * 0.3).toFixed(2) + 's"></path></mask>';
+      lines += '<path class="decor-line" d="' + d + '" mask="url(#' + id + ')" stroke="' +
+        (i === 0 ? 'var(--gold-bright)' : 'var(--ivory)') + '"></path>';
+    });
+    return '<svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>' + defs + '</defs>' + lines + '</svg>';
+  }
+
+  var flightSeq = 0;
+  function buildFlight(cls) {
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 1920 1080');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    svg.setAttribute('class', 'flight-layer ' + cls);
+    svg.setAttribute('aria-hidden', 'true');
+    var id = 'hof-flight-' + (++flightSeq);
+    var defs = document.createElementNS(NS, 'defs');
+    var mask = document.createElementNS(NS, 'mask');
+    mask.setAttribute('id', id);
+    mask.setAttribute('maskUnits', 'userSpaceOnUse');
+    mask.setAttribute('x', '0');
+    mask.setAttribute('y', '0');
+    mask.setAttribute('width', '1920');
+    mask.setAttribute('height', '1080');
+    var maskPath = document.createElementNS(NS, 'path');
+    maskPath.setAttribute('fill', 'none');
+    maskPath.setAttribute('stroke', '#fff');
+    maskPath.setAttribute('stroke-width', '14');
+    mask.appendChild(maskPath);
+    defs.appendChild(mask);
+    svg.appendChild(defs);
+
+    var guide = document.createElementNS(NS, 'path');
+    guide.setAttribute('fill', 'none');
+    guide.setAttribute('stroke', 'none');
+    svg.appendChild(guide);
+
+    var trail = document.createElementNS(NS, 'path');
+    trail.setAttribute('class', 'flight-trail');
+    trail.setAttribute('fill', 'none');
+    trail.setAttribute('mask', 'url(#' + id + ')');
+    svg.appendChild(trail);
+
+    var plane = document.createElementNS(NS, 'g');
+    plane.setAttribute('class', 'flight-jet');
+    JET_SHAPES.forEach(function (d) {
+      var p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d);
+      plane.appendChild(p);
+    });
+    svg.appendChild(plane);
+
+    return { svg: svg, guide: guide, maskPath: maskPath, trail: trail, plane: plane, raf: null, timer: null, stopped: true };
+  }
+
+  function flyPass(f, opts) {
+    if (!f || f.stopped) return;
+    f.guide.setAttribute('d', opts.path);
+    f.maskPath.setAttribute('d', opts.path);
+    f.trail.setAttribute('d', opts.path);
+    var L = f.guide.getTotalLength();
+    var ms = opts.duration * 1000;
+    var scale = opts.scale || [1.2, 1.6];
+    var started = null;
+    f.maskPath.style.strokeDasharray = String(L);
+    f.maskPath.style.strokeDashoffset = String(L);
+    f.plane.style.opacity = '1';
+    f.trail.style.opacity = '0.85';
+
+    function frame(now) {
+      if (f.stopped) return;
+      if (started === null) started = now;
+      var k = Math.min(1, (now - started) / ms);
+      var eased = k * k * (3 - 2 * k);
+      var at = eased * L;
+      var a = f.guide.getPointAtLength(at);
+      var b = f.guide.getPointAtLength(Math.min(L, at + 2));
+      var c = at + 2 > L ? f.guide.getPointAtLength(Math.max(0, at - 2)) : a;
+      var ang = Math.atan2(b.y - c.y, b.x - c.x) * 180 / Math.PI;
+      var s = scale[0] + (scale[1] - scale[0]) * Math.sin(Math.PI * k);
+      // The silhouette is drawn nose-left, so it turns through 180 degrees to face its travel.
+      f.plane.setAttribute('transform', 'translate(' + a.x + ' ' + a.y + ') rotate(' + (ang + 180) + ') scale(' + s + ')');
+      f.maskPath.style.strokeDashoffset = String(L * (1 - eased));
+      if (k < 1) { f.raf = requestAnimationFrame(frame); return; }
+      f.raf = null;
+      f.plane.style.opacity = '0';
+      f.trail.style.opacity = '0';
+      if (opts.repeat) f.timer = setTimeout(function () { flyPass(f, opts); }, opts.repeat * 1000);
+    }
+    f.raf = requestAnimationFrame(frame);
+  }
+
+  function stopFlight(f) {
+    if (!f) return;
+    f.stopped = true;
+    if (f.raf) cancelAnimationFrame(f.raf);
+    f.raf = null;
+    if (f.timer) clearTimeout(f.timer);
+    f.timer = null;
+    f.plane.style.opacity = '0';
+    f.trail.style.opacity = '0';
+  }
+  function stopWelcomeFlights() {
+    stopFlight(motion.intro);
+    stopFlight(motion.ambient);
+  }
+  function startFlights() {
+    stopWelcomeFlights();
+    if (motion.reduced || !motion.intro || !motion.ambient) return;
+    motion.intro.stopped = false;
+    motion.ambient.stopped = false;
+    motion.intro.timer = setTimeout(function () {
+      flyPass(motion.intro, { path: FLIGHT_INTRO, duration: 3.1, scale: [3.2, 4.4] });
+    }, 350);
+    motion.ambient.timer = setTimeout(function () {
+      if (motion.ambient.stopped) return;
+      flyPass(motion.ambient, { path: FLIGHT_AMBIENT, duration: 11, scale: [1.3, 1.9], repeat: 16 });
+    }, 9000);
+  }
+
+  function buildWelcomeMotion(root) {
+    var host = root.querySelector('.attract');
+    if (!host || motion.reduced) return;
+
+    var radar = make('div', 'radar-field');
+    radar.setAttribute('aria-hidden', 'true');
+    radar.innerHTML = '<div class="radar-sweep"></div>' + radarMarkup();
+    host.appendChild(radar);
+
+    var decor = make('div', 'decor-paths');
+    decor.setAttribute('aria-hidden', 'true');
+    decor.innerHTML = decorMarkup();
+    host.appendChild(decor);
+
+    var crests = host.querySelector('.attract-crests');
+    if (crests) {
+      var glint = make('span', 'glint-layer');
+      glint.setAttribute('aria-hidden', 'true');
+      crests.appendChild(glint);
+    }
+
+    motion.intro = buildFlight('flight-front');
+    motion.ambient = buildFlight('flight-behind');
+    host.appendChild(motion.ambient.svg);
+    host.appendChild(motion.intro.svg);
+  }
+
+  /* ---------------- the ruler and the line of succession ---------------- */
+  function markRulerYear(root) {
+    if (!root || motion.reduced) return;
+    var on = root.querySelector('.sky-year.is-on');
+    if (on) on.appendChild(jetSvg('sky-jet'));
+  }
+
+  // A jet runs the length of the lineage and comes to rest at the present day.
+  function sweepLineage(root) {
+    if (!root || motion.reduced) return;
+    var line = root.querySelector('.lineage');
+    if (!line) return;
+    var bar = line.querySelector('.lineage-bar');
+    var jet = jetSvg('lineage-jet', true);
+    line.appendChild(jet);
+    var end = Math.max(0, (bar ? bar.offsetWidth : 0) - 44);
+    var rest = function () {
+      jet.style.transform = 'translateX(' + end + 'px)';
+      jet.style.opacity = '0.95';
+      jet.classList.add('is-on');
+    };
+    if (!jet.animate || !end) { rest(); return; }
+    var anim = jet.animate(
+      [{ transform: 'translateX(0)', opacity: 0.2 }, { transform: 'translateX(' + end + 'px)', opacity: 1 }],
+      { duration: 2400, easing: 'cubic-bezier(0.33, 1, 0.68, 1)', fill: 'both' }
+    );
+    anim.onfinish = function () { anim.cancel(); rest(); };
+  }
+
+  /* ---------------- standby before returning to the welcome screen ---------------- */
+  function buildStandby() {
+    var card = el.idle && el.idle.querySelector('.idle-card');
+    if (!card) return;
+    var crest = document.createElement('img');
+    crest.className = 'idle-crest';
+    crest.src = 'assets/icons/afcsc.png';
+    crest.alt = '';
+    crest.setAttribute('aria-hidden', 'true');
+    var rings = make('div', 'idle-rings');
+    rings.setAttribute('aria-hidden', 'true');
+    rings.appendChild(jetSvg('idle-jet'));
+    var rule = make('span', 'idle-rule');
+    rule.setAttribute('aria-hidden', 'true');
+    var sub = card.querySelector('.idle-sub');
+    card.insertBefore(crest, card.firstChild);
+    card.insertBefore(rings, sub);
+    card.insertBefore(rule, sub);
+  }
+
+  function buildMotion() {
+    motion.screens = $('screens');
+    buildCurtain();
+    buildChapterJet();
+    buildStandby();
+    positionTabJet(state.screen === 'chief' ? 'chiefs' : state.screen);
+  }
+
+  // ============================================================
   // Init
   // ============================================================
   function init() {
@@ -1311,6 +1766,7 @@
     initLightboxSwipe();
     initAmbient();
     probeFilms();
+    buildMotion();
     setInterval(idleTick, 1000);
     show();
   }

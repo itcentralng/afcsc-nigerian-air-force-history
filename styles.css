@@ -1,5 +1,5 @@
 /* ============================================================
-   SK ANEKE HALL OF FAME — kiosk stylesheet
+   SK ANEKE HALL OF FAME â€” kiosk stylesheet
    Landscape (logical canvas 1920x1080), Air Force green, gold & ivory
    ============================================================ */
 
@@ -190,7 +190,7 @@ svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width:
 .dragging { cursor: grabbing; }
 
 /* ============================================================
-   WELCOME — editorial layout over the intro film
+   WELCOME â€” editorial layout over the intro film
    ============================================================ */
 .attract { position: absolute; inset: 0; cursor: pointer; overflow: hidden; background: var(--ink-950); }
 .attract-slides { position: absolute; inset: 0; }
@@ -251,7 +251,7 @@ svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width:
 @keyframes nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
 
 /* ============================================================
-   HOME — contents page over the intro film
+   HOME â€” contents page over the intro film
    ============================================================ */
 .home { position: absolute; inset: 0; display: grid; grid-template-columns: 700px 1fr; gap: 70px; padding: 54px 96px 44px; overflow: hidden; }
 .home-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .4; }
@@ -655,3 +655,351 @@ svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width:
 .chapters { gap: 10px; }
 .chapter { padding: 0 20px; }
 .chapter-l { font-size: 19px; }
+
+/* ============================================================
+   EXHIBIT MOTION
+   The flight-curtain language of the AFCSC exhibition, brought to
+   the Hall of Fame kiosk and dressed in the Air Force green, gold
+   and ivory of this app. Everything here is decorative: screens,
+   copy, data and behaviour are unchanged.
+   ============================================================ */
+
+:root {
+  --ease-exhibit: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-curtain: cubic-bezier(0.76, 0, 0.24, 1);
+  --gradient-exhibit: linear-gradient(135deg, #245a49 0%, var(--ink-800) 52%, #1a3f34 100%);
+  --shadow-plate: 0 1px 2px rgba(4, 12, 9, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+  --shadow-lift: 0 2px 4px rgba(4, 12, 9, 0.5), 0 28px 60px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* â€”â€”â€” keyframes â€”â€”â€” */
+@keyframes topbarIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@keyframes clipIn {
+  from { opacity: 0; clip-path: inset(18% 0 0 0); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+@keyframes cardIn {
+  from { opacity: 0.3; clip-path: inset(100% 0 0 0); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+@keyframes riseIn { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes titleReveal {
+  from { opacity: 0; clip-path: inset(0 0 96% 0); transform: translateY(16px); }
+  to { opacity: 1; clip-path: inset(-40% -12% -40% -12%); transform: none; }
+}
+@keyframes crestIn {
+  from { opacity: 0; transform: scale(0.74); filter: blur(14px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes boardIn { from { opacity: 0; transform: translateX(54px); } to { opacity: 1; transform: none; } }
+@keyframes settleSpacing { from { letter-spacing: 0.32em; opacity: 0; } to { letter-spacing: 0.16em; opacity: 1; } }
+@keyframes drawLine { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes radarSweep { to { transform: rotate(360deg); } }
+@keyframes segIn { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+@keyframes spineDraw { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes glint {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  55%, 100% { transform: translateX(320%) skewX(-18deg); }
+}
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.42); opacity: 0; }
+}
+@keyframes dotBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+@keyframes growBar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes boardSheen { 0% { background-position: 165% 0; } 55%, 100% { background-position: -70% 0; } }
+@keyframes floatSlow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes idleBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* â€”â€”â€” decorative aircraft escape the global icon rule â€”â€”â€” */
+.curtain-jet path, .chapter-jet path, .sky-jet path, .lineage-jet path,
+.flight-jet path, .idle-jet path { fill: currentColor; stroke: none; }
+
+/* â€”â€”â€” the flight curtain â€”â€”â€” */
+.curtain {
+  position: absolute; inset: 0; z-index: 400; overflow: hidden;
+  visibility: hidden; pointer-events: none;
+}
+.curtain.is-active { visibility: visible; pointer-events: auto; }
+.curtain-panel { position: absolute; inset: 0; transform: translateX(100%); }
+.curtain-panel--lead { background: linear-gradient(90deg, #f7e7ae 0%, var(--gold-bright) 46%, var(--gold) 100%); }
+.curtain-panel--main { background: var(--gradient-exhibit); box-shadow: -30px 0 70px rgba(0, 0, 0, 0.45); }
+.curtain-edge { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--gold-bright); }
+.curtain-jet {
+  position: absolute; left: 0; top: 50%; width: 186px; height: 93px; color: var(--gold-bright);
+  transform: translate(-88%, -50%); filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
+}
+.curtain-contrail {
+  position: absolute; left: 58px; height: 1px; width: 62%;
+  background: linear-gradient(90deg, rgba(243, 238, 227, 0.5), rgba(243, 238, 227, 0));
+}
+.curtain-contrail--a { top: calc(50% - 32px); }
+.curtain-contrail--b { top: calc(50% + 32px); }
+.curtain-label {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  color: var(--ivory); opacity: 0; transform: translateY(16px);
+}
+.curtain-num { font-family: var(--font-mono); font-size: 26px; letter-spacing: 0.34em; color: var(--gold-bright); }
+.curtain-title { font-family: var(--font-display); font-weight: 700; font-size: 62px; line-height: 1; letter-spacing: 0.01em; }
+
+/* entrances wait under the curtain, then run as it lifts */
+.motion-hold *, .motion-hold *::before, .motion-hold *::after { animation-play-state: paused !important; }
+
+/* â€”â€”â€” welcome: radar field, drawn paths, flypasts â€”â€”â€” */
+.attract-slides, .attract-video, .attract-shade { z-index: 0; }
+.radar-field {
+  position: absolute; left: 31%; top: 44%; width: 1260px; height: 1260px; margin: -630px 0 0 -630px;
+  z-index: 1; pointer-events: none; opacity: 0.85;
+}
+.radar-sweep {
+  position: absolute; inset: 6%; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(201, 162, 78, 0.1) 345deg, rgba(227, 199, 126, 0.28) 360deg);
+  -webkit-mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+  animation: radarSweep 11s linear infinite;
+}
+.radar-field svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.radar-ring {
+  fill: none; stroke: var(--gold); stroke-width: 1.2; stroke-dasharray: 1; stroke-dashoffset: 1;
+  stroke-linecap: round; animation: drawLine 1.7s var(--ease-exhibit) forwards;
+}
+.radar-ticks { stroke: var(--ivory); stroke-width: 1; opacity: 0; animation: fadeIn 1.2s ease 0.7s forwards; }
+.radar-axis { stroke: var(--ivory); stroke-width: 1; stroke-opacity: 0.08; }
+
+.decor-paths { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.decor-paths svg { width: 100%; height: 100%; }
+.decor-line { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1 13; opacity: 0.5; }
+.decor-reveal { fill: none; stroke: #fff; stroke-width: 16; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawLine 2.6s var(--ease-exhibit) forwards; }
+
+.flight-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.flight-trail {
+  stroke: var(--gold-bright); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 14;
+  opacity: 0; transition: opacity 0.6s ease;
+}
+.flight-jet { color: var(--gold-bright); opacity: 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45)); }
+
+/* the welcome content reads above the sky it flies through */
+.attract-bar, .attract-hero, .attract-card, .attract-begin { z-index: 2; }
+
+/* â€”â€”â€” welcome choreography â€”â€”â€” */
+#screen-attract.active .attract-crests { animation: crestIn 1.2s var(--ease-exhibit) 0.15s both; }
+#screen-attract.active .attract-clock { animation: riseIn 0.8s var(--ease-exhibit) 0.5s both; }
+#screen-attract.active .attract-kicker { animation: riseIn 0.8s var(--ease-exhibit) 0.4s both; }
+#screen-attract.active .attract-title { animation: titleReveal 1.05s var(--ease-exhibit) 0.5s both; }
+#screen-attract.active .attract-lede { animation: riseIn 0.8s var(--ease-exhibit) 0.85s both; }
+#screen-attract.active .attract-figures { animation: riseIn 0.8s var(--ease-exhibit) 1s both; }
+#screen-attract.active .attract-begin { animation: riseIn 0.9s var(--ease-exhibit) 1.15s both; }
+#screen-attract.active .attract-crest-text b { animation: riseIn 0.8s var(--ease-exhibit) 0.6s both; }
+#screen-attract.active .attract-crest-text span { animation: settleSpacing 1.2s var(--ease-exhibit) 0.75s both; }
+
+.attract-crests { position: relative; }
+.glint-layer {
+  position: absolute; left: -6px; top: -12px; width: 216px; height: 108px; overflow: hidden;
+  pointer-events: none; mix-blend-mode: soft-light; border-radius: 10px;
+}
+.glint-layer::after {
+  content: ''; position: absolute; top: -50%; bottom: -50%; left: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, #ffffff 45%, #ffffff 55%, transparent);
+  transform: translateX(-140%) skewX(-18deg);
+  animation: glint 7s var(--ease-exhibit) 1.9s infinite;
+}
+
+/* the gold rule under every masthead draws itself in */
+.masthead::after {
+  content: ''; display: block; width: 132px; height: 4px; margin-top: 18px;
+  background-image: radial-gradient(circle, var(--gold) 1.2px, transparent 1.6px);
+  background-size: 10px 4px; background-repeat: repeat-x;
+  animation: riseIn 0.8s var(--ease-exhibit) 0.25s both;
+}
+.masthead--compact::after, .masthead--home::after { margin-top: 14px; }
+
+.attract-begin-label { position: relative; }
+.attract-begin-label::before, .attract-begin-label::after {
+  content: ''; position: absolute; inset: 0; border-radius: 999px; pointer-events: none;
+  box-shadow: inset 0 0 0 2px rgba(227, 199, 126, 0.9);
+  opacity: 0; animation: pulseRing 2.8s var(--ease-exhibit) infinite;
+}
+.attract-begin-label::after { animation-delay: 1.4s; }
+.attract-card::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: soft-light;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.22) 50%, transparent 60%);
+  background-size: 250% 100%; background-position: 165% 0;
+  animation: boardSheen 9s ease-in-out 2.6s infinite;
+}
+
+/* â€”â€”â€” top bar: growing underline, a jet taxiing to the open chapter â€”â€”â€” */
+.chapters { position: relative; }
+.chapter::after {
+  content: ''; position: absolute; left: 14px; right: 14px; bottom: -18px; height: 3px; border-radius: 2px;
+  background: var(--gold); transform: scaleX(0); transform-origin: center;
+  transition: transform 0.45s var(--ease-exhibit), background 0.3s ease;
+}
+.chapter.is-on::after {
+  transform: scaleX(1);
+  background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold) 82%, transparent);
+}
+.chapter-jet {
+  position: absolute; left: 0; bottom: -12px; width: 34px; height: 17px; color: var(--gold-bright);
+  opacity: 0; pointer-events: none; transform: translateX(0);
+  transition: transform 0.6s var(--ease-exhibit), opacity 0.3s ease;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+.chapter-jet.is-on { opacity: 1; }
+.topbar-brand::after {
+  content: ''; position: absolute; left: 0; top: -8px; width: 132px; height: 76px; pointer-events: none;
+  mix-blend-mode: soft-light; border-radius: 8px;
+  background: linear-gradient(105deg, transparent 40%, #ffffff 50%, transparent 60%);
+  background-size: 260% 100%; background-position: 170% 0;
+  animation: boardSheen 8s ease-in-out 3s infinite;
+}
+
+/* â€”â€”â€” reveals as lists scroll into view â€”â€”â€” */
+.is-reveal { opacity: 0; animation: none !important; }
+.is-reveal.is-in { opacity: 1; animation: cardIn 0.6s var(--ease-exhibit) backwards !important; }
+
+/* â€”â€”â€” home â€”â€”â€” */
+.contents-row { transition: transform 0.2s var(--ease-exhibit), border-color 0.25s ease, background 0.25s ease; }
+.contents-row:active { transform: translateY(-3px) scale(0.995); }
+.contents-thumb::after, .home-fact-img::after, .home-film-play::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: soft-light;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.2) 50%, transparent 58%);
+  background-size: 260% 100%; background-position: 165% 0;
+  animation: boardSheen 7.5s ease-in-out 1.5s infinite;
+}
+.home-film-play { position: relative; }
+.home-progress { animation: riseIn 0.8s var(--ease-exhibit) 0.3s both; }
+.progress-light.is-on { animation: dotBreath 2.6s ease-in-out infinite; }
+
+/* â€”â€”â€” timeline: bars grow, a jet marks the year on the ruler â€”â€”â€” */
+.sky-bar { transform-origin: center bottom; animation: growBar 0.9s var(--ease-exhibit) backwards; }
+.sky-jet {
+  position: absolute; right: 8px; bottom: 46px; width: 30px; height: 15px;
+  color: var(--gold-bright); pointer-events: none; opacity: 0.95;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+  animation: floatSlow 3.4s ease-in-out infinite;
+}
+.decade, .year { animation-duration: 0.7s; }
+.decade-hero::after, .chron-hero::after, .film-card-media::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: soft-light;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.22) 50%, transparent 58%);
+  background-size: 260% 100%; background-position: 165% 0;
+  animation: boardSheen 8s ease-in-out 2.4s infinite;
+}
+.year-card, .film-card, .film-chip, .cas-card, .mini-event, .event { transition: transform 0.2s var(--ease-exhibit), border-color 0.25s ease, box-shadow 0.3s ease; }
+.year-card:active, .film-chip:active, .mini-event:active { transform: translateY(-3px) scale(0.99); box-shadow: var(--shadow-lift); }
+
+/* â€”â€”â€” chiefs: the line of succession draws itself, a jet sweeps it â€”â€”â€” */
+.lineage { position: relative; }
+.lineage-seg { animation: segIn 0.75s var(--ease-exhibit) backwards; }
+.lineage-jet {
+  position: absolute; left: 0; top: -12px; width: 42px; height: 21px; color: var(--gold-bright);
+  opacity: 0; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+  transition: opacity 0.4s ease;
+}
+.lineage-jet.is-on { opacity: 0.95; }
+.chief-card { transition: transform 0.2s var(--ease-exhibit), border-color 0.25s ease, box-shadow 0.3s ease; }
+.chief-card:active { transform: translateY(-4px) scale(0.99); box-shadow: var(--shadow-lift); }
+.chief-card-photo img, .chief-portrait-frame img, .cas-photo img, .chief-pick-photo img,
+.attract-card-img img, .contents-thumb img, .decade-hero img, .chron-hero-frame img {
+  animation: fadeIn 0.5s both, kenburns 26s linear infinite alternate;
+}
+.chief-portrait { position: relative; }
+.chief-portrait::after {
+  content: ''; position: absolute; inset: 20px; pointer-events: none;
+  background:
+    linear-gradient(var(--gold), var(--gold)) left top / 30px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left top / 2px 30px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right top / 30px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right top / 2px 30px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left bottom / 30px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left bottom / 2px 30px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right bottom / 30px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right bottom / 2px 30px no-repeat;
+  opacity: 0.6; animation: fadeIn 1s ease 0.3s both;
+}
+.chief-right .masthead, .chief-meta, .ach li { animation: riseIn 0.6s var(--ease-exhibit) backwards; }
+.ach li { animation-delay: 0.1s; }
+
+/* â€”â€”â€” chronicles: the spine draws, nodes breathe â€”â€”â€” */
+.chron-spine { animation: spineDraw 1.6s var(--ease-exhibit) forwards; }
+.chron-node { animation: dotBreath 3.2s ease-in-out infinite; }
+
+/* â€”â€”â€” photo viewer and film player â€”â€”â€” */
+.lightbox-figure { animation: riseIn 0.45s var(--ease-exhibit) both; }
+.lightbox-caption > * { animation: riseIn 0.5s var(--ease-exhibit) backwards; }
+.lightbox-caption > *:nth-child(2) { animation-delay: 0.08s; }
+.lightbox-caption > *:nth-child(3) { animation-delay: 0.16s; }
+
+/* â€”â€”â€” standby (idle) â€”â€”â€” */
+.idle-card { position: relative; }
+.idle-crest { width: 128px; height: auto; opacity: 0; animation: crestIn 0.9s var(--ease-exhibit) 0.1s both; }
+.idle-rings {
+  position: relative; display: grid; place-items: center; width: 420px; height: 108px;
+  background: radial-gradient(circle at 50% 50%, transparent 0 38px, rgba(201, 162, 78, 0.2) 38px 39px, transparent 39px 64px, rgba(201, 162, 78, 0.14) 64px 65px, transparent 65px);
+}
+.idle-rings .idle-jet {
+  position: absolute; left: 50%; top: 50%; width: 120px; height: 60px; margin: -30px 0 0 -60px;
+  color: var(--gold-bright); animation: floatSlow 3.2s ease-in-out infinite;
+}
+.idle-rule {
+  display: block; width: 480px; height: 3px; transform-origin: center;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-bright), var(--gold));
+  animation: idleBar 2s var(--ease-exhibit) both;
+}
+.idle-title, .idle-sub { animation: riseIn 0.7s var(--ease-exhibit) backwards; }
+.idle-sub { animation-delay: 0.25s; }
+
+/* â€”â€”â€” reduced motion: the kiosk behaves exactly as it did before â€”â€”â€” */
+@media (prefers-reduced-motion: reduce) {
+  .curtain { display: none; }
+  .radar-sweep, .decor-paths, .flight-layer, .glint-layer,
+  .topbar-brand::after, .attract-card::after, .contents-thumb::after,
+  .home-fact-img::after, .home-film-play::after, .decade-hero::after,
+  .chron-hero::after, .film-card-media::after, .chief-portrait::after,
+  .attract-begin-label::before, .attract-begin-label::after,
+  .chapter-jet, .sky-jet, .lineage-jet, .idle-rule { display: none !important; }
+  .radar-ring, .radar-ticks, .progress-light.is-on, .chron-node, .chron-spine,
+  .sky-bar, .lineage-seg, .is-reveal, .is-reveal.is-in,
+  .attract-crests, .attract-clock, .attract-kicker, .attract-title, .attract-lede,
+  .attract-figures, .attract-begin, .attract-crest-text b, .attract-crest-text span,
+  .masthead::after, .home-progress, .lightbox-figure, .lightbox-caption > *,
+  .idle-crest, .idle-title, .idle-sub, .chief-right .masthead, .chief-meta, .ach li,
+  .chief-card-photo img, .chief-portrait-frame img, .cas-photo img, .chief-pick-photo img,
+  .attract-card-img img, .contents-thumb img, .decade-hero img, .chron-hero-frame img {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    filter: none !important;
+  }
+  .radar-ring { stroke-dashoffset: 0; }
+  .radar-ticks { opacity: 0.7 !important; }
+  .chapter::after { transform: scaleX(1); }
+  /* the app's own staggered entrances are stilled too, so every page simply appears */
+  .screen.active, .masthead, .attract-bar, .attract-hero, .attract-crests, .attract-clock,
+  .contents-row, .home-film, .year-card, .film-card, .film-chip, .decade, .year, .event,
+  .chief-card, .chief-left, .chief-right, .chron-left, .chron-item, .connect-tile,
+  .result-head, .lightbox-figure, .lightbox-caption > *, .frame img, .sky-bar {
+    animation: none !important; opacity: 1 !important; transform: none !important;
+  }
+}
+
+/* ============================================================
+   REARRANGEMENTS
+   Existing elements in new places: nothing added, nothing removed.
+   ============================================================ */
+
+/* 1. Welcome: one baseline for the title block, the archive card aligned to
+      the lede so the bottom right stays clear for the flypast, and the begin
+      row on the bottom edge. */
+.attract-hero { top: 268px; width: 1120px; }
+.attract-card { top: 466px; bottom: auto; }
+.attract-begin { bottom: 44px; }
+
+/* 2. Home: the four progress lights head the contents list instead of closing
+      the left column, so they sit beside the chapters they describe. */
+.contents > .home-progress { margin-top: 0; margin-bottom: 2px; flex: none; }
+
+/* 3. Chronicles: the onward chapter moves up under the masthead, so the way
+      forward is always in view and the hero photograph takes the rest. */
+.chron-switch { margin: 2px 0 0; }
