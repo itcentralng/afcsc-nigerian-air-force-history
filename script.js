@@ -1,1775 +1,1682 @@
-/* ============================================================
-   AIR MARSHAL S.K. ANEKE HALL OF FAME — kiosk app logic
-   History of the Nigerian Air Force · AFCSC, Nigeria
-   Plain JavaScript, no build step, runs from file:// with no internet.
-   All content comes from data/content.js (window.HOF_CONTENT).
-   ============================================================ */
+/*
+  SK Aneke Hall of Fame — kiosk runtime.
 
+  Plain ES5-ish JavaScript, no build step, runs from file:// in Edge kiosk mode.
+  Data lives in data/content.js (window.HOF_CONTENT); this file only presents it.
+
+  Structure
+    helpers        small formatting + markup utilities
+    chrome         stage scaling, top bar, gallery dock, flight curtain
+    routes         hash router with a small back stack
+    views          welcome, history, nigerian air force, chiefs,
+                   college, films, air warfare
+    overlays       photo viewer (lightbox), record viewer, film player, idle
+*/
 (function () {
   'use strict';
 
-  var C = window.HOF_CONTENT;
+  var C = window.HOF_CONTENT || {};
+  var DECADES = C.decades || [];
+  var EVENTS = (C.events || []).slice();
+  var CHIEFS = C.chiefs || [];
+  var FILMS = C.films || [];
+  var COLLEGE = (C.chronicles && C.chronicles.college) || { items: [] };
+  var DAW = (C.chronicles && C.chronicles.daw) || { items: [] };
 
-  // ---------- tuning ----------
-  var STAGE_W = 1920, STAGE_H = 1080;
-  var IDLE_MS = 90000;           // no touch for this long -> "still there?" prompt
-  var IDLE_WARN_S = 10;          // seconds the prompt counts down before the welcome screen
-  var YEAR_FIRST = 1961, YEAR_LAST = 2026;
-  var YEAR_W = 132;              // px per year on the timeline ruler
-  var ATTRACT_SLIDE_MS = 7000;   // welcome-screen photo and fact rotation
-  var HOME_FACT_MS = 9000;
-  var AMBIENT_SRC = 'assets/audio/ambient.mp3'; // optional: drop a loop here to enable music
-  var AMBIENT_VOLUME = 0.3, AMBIENT_DUCK = 0.05;
+  var FALLBACK_PHOTO = COLLEGE.hero || (DAW.hero || 'assets/icons/afcsc.png');
+  var CURTAIN_MS = 720;
+  var IDLE_MS = 120000;
+  var IDLE_COUNT = 10;
 
-  // Chapter titles, navigation labels and standfirsts for each screen.
-  var SECTIONS = {
-    films:    { n: '', nav: 'Films', kicker: 'Watch', title: 'The story on film' },
-    timeline: { n: '01', nav: 'Nigerian Air Force', name: 'History of the Nigerian Air Force', kicker: '01 · History of the Nigerian Air Force', title: 'Six decades of service' },
-    chiefs:   { n: '02', nav: 'Past Chiefs', name: 'Past Chiefs of the Air Staff', kicker: '02 · Past Chiefs of the Air Staff', title: 'The officers who led the service' },
-    college:  { n: '03', nav: 'The College', name: 'History of the College', kicker: '03 · History of the College', title: 'Armed Forces Command and Staff College, Nigeria' },
-    daw:      { n: '04', nav: 'Air Warfare', name: 'History of the Department of Air Warfare', kicker: '04 · History of the Department of Air Warfare', title: 'Teaching airpower' },
-    fleet:    { n: '05', nav: 'Fleet & Bases', kicker: 'Chapter 05 · Fleet and bases', title: 'Where the Air Force flies, and what it flies' },
-    connect:  { n: '06', nav: 'Your link', kicker: 'Chapter 06 · Your connection', title: 'Where do you fit in the story?' },
-    archive:  { n: '07', nav: 'Archive', kicker: 'Chapter 07 · Photograph archive', title: 'The archive' }
-  };
-  // Page heading in the same style as the welcome screen: gold rule, kicker, display title, standfirst.
-  function masthead(key, lede, extraClass) {
-    var sec = SECTIONS[key];
-    return '<header class="masthead ' + (extraClass || '') + '"><div class="masthead-kicker">' + esc(sec.kicker) + '</div>' +
-      '<h2 class="masthead-title">' + esc(sec.title) + '</h2>' + (lede ? '<p class="masthead-lede">' + esc(lede) + '</p>' : '') + '</header>';
+  /* ============================================================
+     helpers
+     ============================================================ */
+
+  var MOJIBAKE = [
+    ['â€“', '–'], ['â€”', '—'], ['â€™', '’'], ['â€˜', '‘'], ['â€œ', '“'], ['â€\u009d', '”'],
+    ['Â·', '·'], ['Â ', ' '], ['Ã©', 'é'], ['Ã¡', 'á'], ['Ã³', 'ó'], ['â€¦', '…'], ['Â', '']
+  ];
+
+  function fix(text) {
+    var s = String(text == null ? '' : text);
+    for (var i = 0; i < MOJIBAKE.length; i++) s = s.split(MOJIBAKE[i][0]).join(MOJIBAKE[i][1]);
+    return s;
   }
-  // The four main sections the Hall of Fame is built around. These are the
-  // only ones in the navigation and on Home. The films play from inside them.
-  // The extra screens (films, fleet, connect, archive) are still in the code
-  // but nothing links to them; add a key here to bring one back.
-  var EXPLORE_KEYS = ['timeline', 'chiefs', 'college', 'daw'];
 
-  var state = {
-    screen: 'attract',
-    hist: [],
-    decade: 0,
-    year: null,
-    rulerX: 0,
-    chief: 1,
-    fleetTab: 'bases',
-    base: 'kaduna',
-    era: 'all',
-    cmode: null,
-    cval: null,
-    cdecade: 1980,
-    archive: 'all',
-    visited: {},
-    watched: {},
-    big: false,
-    reach: false,
-    scale: 1
-  };
+  function esc(text) {
+    return fix(text)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
 
-  var el = {};
-  var lists = {};          // photo lists the viewer can page through, keyed per render
-  var lightbox = { list: [], i: 0 };
-  var film = null;
-  var lastTouch = Date.now();
-  var idleLeft = 0;
-  var attractTimer = null, homeFactTimer = null;
-  var ambient = null, ambientOn = true, ambientReady = false;
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function byId(id) { return document.getElementById(id); }
+  function qs(sel, root) { return (root || document).querySelector(sel); }
+  function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
-  // ============================================================
-  // Derived data
-  // ============================================================
+  function parseISO(text) {
+    if (!text) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(text));
+    if (!m) return null;
+    return new Date(+m[1], +m[2] - 1, +m[3]);
+  }
+
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  C.events.forEach(function (e, i) { e.id = i; });
-  var countsByYear = {};
-  C.events.forEach(function (e) { countsByYear[e.year] = (countsByYear[e.year] || 0) + 1; });
-  var eventYears = Object.keys(countsByYear).map(Number).sort(function (a, b) { return a - b; });
-
-  function filmById(id) { for (var i = 0; i < C.films.length; i++) if (C.films[i].id === id) return C.films[i]; return null; }
-  // The evenly cropped portrait (assets/portraits) where there is one, else the archive photo.
-  function portraitOf(c) { return c.portrait || c.photo; }
-  // Past Chiefs: everyone except the serving Chief, who is not listed on the
-  // Past Chiefs page (the Hall of Fame is named after him; he appears on the
-  // timeline but has no entry in the gallery).
-  var PAST = C.chiefs.filter(function (c) { return !c.serving; });
-  var LAST_PAST = PAST[PAST.length - 1];
-  function isPast(c) { return c && !c.serving; }
-  function chiefByNo(n) { for (var i = 0; i < C.chiefs.length; i++) if (C.chiefs[i].no === n) return C.chiefs[i]; return C.chiefs[0]; }
-  function baseById(id) { for (var i = 0; i < C.bases.length; i++) if (C.bases[i].id === id) return C.bases[i]; return C.bases[0]; }
-  function eventsInYear(y) { return C.events.filter(function (e) { return e.year === y; }); }
-  function decadeOf(y) { for (var i = 0; i < C.decades.length; i++) if (y >= C.decades[i].from && y <= C.decades[i].to) return i; return 0; }
-
-  function filmStill(f) {
-    for (var i = 0; i < C.events.length; i++) if (C.events[i].film === f.id && C.events[i].photos && C.events[i].photos.length) return C.events[i].photos[0];
-    if (f.section === 'college') return C.chronicles.college.hero;
-    if (f.section === 'chiefs') return portraitOf(LAST_PAST);
-    if (f.section === 'home') return firstPhoto(C.events.filter(function (e) { return e.year === 1964; }));
-    if (f.year) return firstPhoto(eventsInYear(f.year));
-    return '';
-  }
-  // Which films are actually on this kiosk. Each film file is probed once at
-  // start-up; missing ones show "Coming soon" until the file is dropped into
-  // assets/video/ (no code change needed).
-  var filmStatus = {};
-  function probeFilms() {
-    C.films.forEach(function (f) {
-      var v = document.createElement('video');
-      v.preload = 'metadata';
-      v.muted = true;
-      v.addEventListener('loadedmetadata', function () {
-        filmStatus[f.id] = 'ok';
-        if (!f.duration && isFinite(v.duration)) f.duration = mmss(v.duration);
-        v.removeAttribute('src'); v.load();
-        refreshFilmViews();
-      }, { once: true });
-      v.addEventListener('error', function () { filmStatus[f.id] = 'missing'; refreshFilmViews(); }, { once: true });
-      v.src = f.src;
-    });
-  }
-  function filmReady(f) { return filmStatus[f.id] === 'ok'; }
-  function filmSoon(f) { return filmStatus[f.id] === 'missing'; }
-  var refreshTimer = null;
-  function refreshFilmViews() {
-    clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(function () {
-      if (['films', 'timeline', 'chiefs', 'college', 'daw'].indexOf(state.screen) >= 0 && el.lightbox.classList.contains('hidden') && !film) {
-        var scrollers = [].map.call(el.screens[state.screen].querySelectorAll('[data-scroll]'), function (n) { return [n.scrollLeft, n.scrollTop]; });
-        show();
-        [].forEach.call(el.screens[state.screen].querySelectorAll('[data-scroll]'), function (n, i) { if (scrollers[i]) { n.scrollLeft = scrollers[i][0]; n.scrollTop = scrollers[i][1]; } });
-      }
-    }, 150);
+  function fmtDate(text) {
+    var d = parseISO(text);
+    if (!d) return fix(text || '');
+    return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
   }
 
-  function firstPhoto(events) { for (var i = 0; i < events.length; i++) if (events[i].photos && events[i].photos.length) return events[i].photos[0]; return ''; }
-
-  // Every photograph in the content, once, tagged with where it belongs.
-  var ARCHIVE = (function () {
-    var seen = {}, out = [];
-    function add(src, item) { if (!src || seen[src]) return; seen[src] = true; item.src = src; out.push(item); }
-    // Portraits first, so every Chief's photograph is filed under the Chiefs collection.
-    C.chiefs.forEach(function (c) { add(c.photo, { group: 'chiefs', year: +yr(c.from), date: chiefLabel(c), title: c.name, text: yr(c.from) + ' – ' + (c.to ? yr(c.to) : 'present'), link: { act: 'chief', arg: c.no } }); });
-    C.events.forEach(function (e) {
-      (e.photos || []).forEach(function (p, i) {
-        add(p, { group: 'timeline', year: e.year, date: e.date, title: e.title, text: i === 0 && e.caption ? e.caption : '', link: { act: 'year', arg: e.year } });
-      });
-    });
-    C.bases.forEach(function (b) { add(b.photo, { group: 'bases', date: b.city + ' · ' + b.state, title: b.role, text: b.caption || '', link: { act: 'base', arg: b.id } }); });
-    C.aircraft.forEach(function (a) { add(a.photo, { group: 'aircraft', date: 'In service from ' + a.inService + ' · ' + a.origin, title: a.name, text: a.caption || '', link: { act: 'go', arg: 'fleet:aircraft' } }); });
-    ['college', 'daw'].forEach(function (key) {
-      var ch = C.chronicles[key];
-      add(ch.hero, { group: key, date: ch.eyebrow, title: ch.heroCaption || ch.title, text: '', link: { act: 'go', arg: key } });
-      ch.items.forEach(function (it) {
-        (it.photos || []).forEach(function (p, i) { add(p, { group: key, date: it.date, title: it.title, text: i === 0 && it.caption ? it.caption : '', link: { act: 'go', arg: key } }); });
-      });
-    });
-    return out;
-  })();
-  var ARCHIVE_GROUPS = [
-    { key: 'all', label: 'Everything' },
-    { key: 'timeline', label: 'Air Force history' },
-    { key: 'chiefs', label: 'Chiefs of the Air Staff' },
-    { key: 'bases', label: 'Bases' },
-    { key: 'aircraft', label: 'Aircraft' },
-    { key: 'college', label: 'The College' },
-    { key: 'daw', label: 'Air Warfare' }
-  ];
-
-  var ERAS = [
-    { key: 'all', label: 'All aircraft', from: 0, to: 9999 },
-    { key: '60s', label: '1960s', from: 1960, to: 1969 },
-    { key: '70s', label: '1970s', from: 1970, to: 1979 },
-    { key: '80s', label: '1980s', from: 1980, to: 1989 },
-    { key: '00s', label: '2000s – 2010s', from: 1990, to: 2019 },
-    { key: '20s', label: '2020s', from: 2020, to: 2099 }
-  ];
-
-  // ============================================================
-  // Small helpers
-  // ============================================================
-  function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
+  function yearOf(iso) {
+    var d = parseISO(iso);
+    return d ? d.getFullYear() : null;
   }
-  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
-  function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
-  function yr(iso) { return iso ? iso.slice(0, 4) : ''; }
-  function parseISO(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
-  function fmtDate(iso) { if (!iso) return 'Present'; var d = parseISO(iso); return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
-  function tenure(c) {
-    var a = parseISO(c.from), b = c.to ? parseISO(c.to) : new Date();
-    var days = Math.max(0, Math.round((b - a) / 86400000));
-    if (days < 120) return plural(days, 'day');
-    var months = Math.round(days / 30.44), y = Math.floor(months / 12), m = months % 12;
-    return [y ? plural(y, 'year') : '', m ? plural(m, 'month') : ''].filter(Boolean).join(', ');
+
+  function span(from, to, now) {
+    var a = yearOf(from), b = to ? yearOf(to) : null;
+    if (!a) return fix(from || '');
+    if (!b) return a + ' – ' + (now || 'today');
+    return a + ' – ' + b;
   }
-  function casFor(y) {
-    var d = new Date(y, 6, 1);
-    for (var i = 0; i < C.chiefs.length; i++) {
-      var c = C.chiefs[i];
-      if (parseISO(c.from) <= d && (!c.to || parseISO(c.to) > d)) return c;
+
+  function initials(name) {
+    var parts = String(name || '').replace(/[^A-Za-z ]/g, ' ').trim().split(/\s+/);
+    if (!parts[0]) return 'NAF';
+    var first = parts[0].charAt(0);
+    var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+    return (first + last).toUpperCase();
+  }
+
+  function ordinal(n) {
+    var n2 = Math.abs(n) % 100;
+    var suffix = ['th', 'st', 'nd', 'rd'];
+    var k = n2 % 10;
+    return n + (n2 >= 11 && n2 <= 13 ? 'th' : (suffix[k] || 'th'));
+  }
+
+  function tenureText(from, to) {
+    var a = parseISO(from);
+    var b = to ? parseISO(to) : new Date();
+    if (!a || !b || b < a) return '';
+    var months = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    if (b.getDate() >= a.getDate()) months += 1;
+    var years = Math.floor(months / 12);
+    var rest = months % 12;
+    var parts = [];
+    if (years) parts.push(years + (years === 1 ? ' year' : ' years'));
+    if (rest) parts.push(rest + (rest === 1 ? ' month' : ' months'));
+    if (!parts.length) parts.push('under a month');
+    return parts.join(', ');
+  }
+
+  function photoOf(event) {
+    var list = (event && event.photos) || [];
+    for (var i = 0; i < list.length; i++) if (list[i]) return list[i];
+    return FALLBACK_PHOTO;
+  }
+
+  function portraitOf(chief) { return chief.portrait || chief.photo || FALLBACK_PHOTO; }
+
+  function imgTag(src, alt, cls) {
+    return '<img class="' + (cls || '') + '" src="' + esc(src || FALLBACK_PHOTO) + '" alt="' + esc(alt || '') +
+      '" loading="lazy" onerror="this.style.opacity=0" />';
+  }
+
+  function eventsIn(from, to) {
+    return EVENTS.filter(function (e) { return e.year >= from && e.year <= to; });
+  }
+
+  function eraOf(year) {
+    for (var i = 0; i < DECADES.length; i++) if (year >= DECADES[i].from && year <= DECADES[i].to) return i;
+    return 0;
+  }
+
+  function filmForYear(year) {
+    for (var i = 0; i < FILMS.length; i++) if (FILMS[i].year && FILMS[i].year === year) return FILMS[i];
+    return nearestFilm(year);
+  }
+
+  function nearestFilm(year) {
+    var withYear = FILMS.filter(function (f) { return f.year; });
+    if (!withYear.length) return null;
+    var best = withYear[0];
+    for (var i = 1; i < withYear.length; i++) {
+      if (Math.abs(withYear[i].year - year) < Math.abs(best.year - year)) best = withYear[i];
     }
+    return Math.abs(best.year - year) <= 8 ? best : null;
+  }
+
+  function filmStill(film) {
+    if (!film) return FALLBACK_PHOTO;
+    if (film.still) return film.still;
+    var hit = EVENTS.filter(function (e) { return e.year === film.year && e.photos && e.photos.length; })[0];
+    return hit ? photoOf(hit) : DAW.hero || FALLBACK_PHOTO;
+  }
+
+  function filmById(id) {
+    for (var i = 0; i < FILMS.length; i++) if (FILMS[i].id === id) return FILMS[i];
     return null;
   }
-  function chiefYears(c) { return yr(c.from) + ' – ' + (c.to ? yr(c.to) : 'present'); }
-  function chiefLabel(c) { return c.serving ? 'Serving Chief of the Air Staff' : ordinal(c.no) + (c.no <= 2 ? ' Commander of the NAF' : ' Chief of the Air Staff'); }
-  function initials(name) { return String(name || '').replace(/^(Air Chief Marshal|Air Marshal|Air Vice Marshal|Lieutenant Colonel|Colonel|Brigadier)\s+/, '').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 3); }
-  function paras(arr, cls) { return (arr || []).map(function (p) { return '<p class="' + (cls || 'body-text') + '">' + esc(p) + '</p>'; }).join(''); }
 
-  // A photo frame: shows a quiet placeholder until (or unless) the image loads.
-  function frame(src, cls, label, attrs) {
-    return '<div class="frame ' + (cls || '') + '" data-label="' + esc(label || '') + '"' + (attrs || '') + '>' +
-      (src ? '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async" />' : '') + '</div>';
+  function firstLine(event) {
+    var text = (event && event.text) || [];
+    return text.length ? text[0] : '';
   }
-  function zoomAttrs(listKey, i) { return ' data-act="zoom" data-arg="' + listKey + ':' + i + '"'; }
 
-  var ICON = {
-    play: '<svg viewBox="0 0 24 24"><path d="M7 5v14l12-7Z" fill="currentColor" stroke="none"/></svg>',
-    next: '<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
-    prev: '<svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>',
-    zoom: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M11 8.5v5M8.5 11h5"/></svg>',
-    pin: '<svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg>',
-    person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4 3.9-6.5 7.5-6.5s6.7 2.5 7.5 6.5"/></svg>',
-    cal: '<svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="1.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>',
-    star: '<svg viewBox="0 0 24 24"><path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8Z"/></svg>',
-    plane: '<svg viewBox="0 0 24 24"><path d="M21 15.5v-1.8l-7.5-4.5V4.5a1.5 1.5 0 0 0-3 0v4.7L3 13.7v1.8l7.5-2.2v4.4l-2 1.5v1.3l3.5-1 3.5 1v-1.3l-2-1.5v-4.4Z"/></svg>',
-    check: '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>'
+  function rng(seed) {
+    var s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  }
+
+  /* ============================================================
+     sections
+     ============================================================ */
+
+  var WELCOME_SECTION = { key: 'welcome', no: '01', title: 'Welcome' };
+
+  var SECTIONS = [
+    { key: 'history', no: '02', title: 'History', short: 'History', blurb: 'Six decades in six chapters', route: '#/history' },
+    { key: 'naf', no: '03', title: 'Nigerian Air Force', short: 'Air Force', blurb: 'Eras and the full timeline', route: '#/naf' },
+    { key: 'chiefs', no: '04', title: 'Chiefs of the Air Staff', short: 'Chiefs', blurb: 'Twenty-three commanders', route: '#/chiefs' },
+    { key: 'college', no: '05', title: 'The College', short: 'College', blurb: 'Records of the College', route: '#/college' },
+    { key: 'films', no: '06', title: 'Film Archive', short: 'Film', blurb: 'Seven short films', route: '#/films' },
+    { key: 'daw', no: '07', title: 'Air Warfare', short: 'Air Warfare', blurb: 'The Department, 1977 to today', route: '#/daw' }
+  ];
+
+  function sectionOf(key) {
+    for (var i = 0; i < SECTIONS.length; i++) if (SECTIONS[i].key === key) return SECTIONS[i];
+    return SECTIONS[0];
+  }
+
+  /* ============================================================
+     state
+     ============================================================ */
+
+  var state = {
+    current: null,
+    stack: [],
+    era: 0,
+    year: null,
+    moment: 0,
+    chapter: 0,
+    suppressClick: false,
+    skipCurtain: false,
+    films: { index: 0 },
+    record: { set: null, index: 0 },
+    lightbox: { list: [], index: 0, collection: '' },
+    idleTimer: null,
+    idleCountTimer: null,
+    idleLeft: IDLE_COUNT,
+    transitioning: false,
+    drag: null
   };
 
-  // ============================================================
-  // Stage scaling
-  // ============================================================
+  var dom = {};
+
+  /* ============================================================
+     chrome
+     ============================================================ */
+
   function scaleStage() {
-    var s = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
-    state.scale = s;
-    el.stage.style.transform = 'scale(' + s + ')';
+    if (!dom.stage) return;
+    var scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    dom.stage.style.transform = 'scale(' + scale + ')';
   }
 
-  // ============================================================
-  // Touch scrolling: drag with momentum on any [data-scroll] element.
-  // Works the same for finger and mouse; a drag never counts as a tap.
-  // ============================================================
-  function initScrollers(root) {
-    root.querySelectorAll('[data-scroll]').forEach(function (node) { makeScroller(node, node.getAttribute('data-scroll')); });
-  }
-  function makeScroller(node, axis) {
-    if (node._scroller) return;
-    node._scroller = true;
-    var s = { down: false, moved: false, start: 0, last: 0, lastT: 0, v: 0, pid: null, raf: 0 };
-    function pos(e) { return axis === 'x' ? e.clientX : e.clientY; }
-    function get() { return axis === 'x' ? node.scrollLeft : node.scrollTop; }
-    function set(v) { if (axis === 'x') node.scrollLeft = v; else node.scrollTop = v; }
-    node.addEventListener('pointerdown', function (e) {
-      if (e.button) return;
-      cancelAnimationFrame(s.raf); cancelAnimationFrame(node._glide || 0);
-      s.down = true; s.moved = false; s.start = s.last = pos(e); s.lastT = performance.now(); s.v = 0; s.pid = e.pointerId;
-    });
-    node.addEventListener('pointermove', function (e) {
-      if (!s.down || e.pointerId !== s.pid) return;
-      var p = pos(e);
-      if (!s.moved && Math.abs(p - s.start) > 10) {
-        s.moved = true; node.classList.add('dragging');
-        try { node.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      }
-      if (!s.moved) return;
-      var d = (p - s.last) / state.scale, t = performance.now();
-      set(get() - d);
-      s.v = 0.75 * s.v + 0.25 * (d / Math.max(1, t - s.lastT));
-      s.last = p; s.lastT = t;
-    });
-    function up() {
-      if (!s.down) return;
-      s.down = false;
-      if (!s.moved) return;
-      node._suppressClick = Date.now();
-      node.classList.remove('dragging');
-      var v = s.v * 16;
-      (function step() {
-        if (Math.abs(v) < 0.4) return;
-        set(get() - v); v *= 0.94;
-        s.raf = requestAnimationFrame(step);
-      })();
+  function setChrome(section, opts) {
+    var isWelcome = section.key === 'welcome';
+    dom.topbar.classList.toggle('hidden', isWelcome);
+    dom.dock.classList.toggle('hidden', isWelcome);
+    if (!isWelcome) {
+      byId('section-n').textContent = section.no;
+      byId('section-title').textContent = section.title;
+      paintDock(section.key);
+      var idx = SECTIONS.map(function (s) { return s.key; }).indexOf(section.key);
+      var prev = idx < 0 ? SECTIONS[SECTIONS.length - 1] : SECTIONS[(idx - 1 + SECTIONS.length) % SECTIONS.length];
+      var next = idx < 0 ? SECTIONS[0] : SECTIONS[(idx + 1) % SECTIONS.length];
+      byId('dock-prev-label').textContent = prev.short;
+      byId('dock-next-label').textContent = next.short;
     }
-    node.addEventListener('pointerup', up);
-    node.addEventListener('pointercancel', up);
-    node.addEventListener('click', function (e) {
-      if (node._suppressClick && Date.now() - node._suppressClick < 350) { e.stopPropagation(); e.preventDefault(); }
-    }, true);
-    if (axis === 'x') {
-      node.addEventListener('wheel', function (e) {
-        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { node.scrollLeft += e.deltaY; e.preventDefault(); }
-      }, { passive: false });
+    document.body.dataset.section = section.key;
+  }
+
+  function paintDock(activeKey) {
+    if (!dom.dockItems.childElementCount) {
+      dom.dockItems.innerHTML = SECTIONS.map(function (s) {
+        return '<button class="dock-item" data-act="go" data-route="' + s.route + '">' +
+          '<span class="dock-n">' + s.no + '</span>' +
+          '<span class="dock-label">' + esc(s.short) + '</span></button>';
+      }).join('');
     }
-  }
-  function glideTo(node, axis, target, ms) {
-    cancelAnimationFrame(node._glide || 0);
-    var from = axis === 'x' ? node.scrollLeft : node.scrollTop, t0 = performance.now();
-    ms = ms || 600;
-    (function step(now) {
-      var k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3);
-      var v = from + (target - from) * e;
-      if (axis === 'x') node.scrollLeft = v; else node.scrollTop = v;
-      if (k < 1) node._glide = requestAnimationFrame(step);
-    })(t0);
-  }
-
-  // ============================================================
-  // Navigation
-  // ============================================================
-  function snapshot() {
-    return { screen: state.screen, decade: state.decade, year: state.year, chief: state.chief, fleetTab: state.fleetTab, base: state.base, era: state.era, cmode: state.cmode, cval: state.cval, archive: state.archive };
-  }
-  // Every move a visitor makes, between screens or within one (a year, a
-  // decade, the next Chief), is a step in the history, so Back retraces
-  // exactly the path they took.
-  function step(patch) {
-    var before = JSON.stringify(snapshot());
-    var prev = snapshot();
-    Object.assign(state, patch);
-    if (JSON.stringify(snapshot()) !== before) state.hist.push(prev);
-    show();
-  }
-  function go(screen, patch) {
-    if (screen !== state.screen || patch) state.hist.push(snapshot());
-    Object.assign(state, patch || {});
-    state.screen = screen;
-    if (EXPLORE_KEYS.indexOf(screen) >= 0) state.visited[screen] = true;
-    if (screen === 'chief') state.visited.chiefs = true;
-    show();
-  }
-  function goBack() {
-    var prev = state.hist.pop();
-    if (!prev || prev.screen === 'attract') { state.hist = []; state.screen = 'home'; return show(); }
-    Object.assign(state, prev);
-    show();
-  }
-  // Where Back would go, in words, or null when that is just Home (the Home button covers it).
-  function backTarget() {
-    var prev = state.hist[state.hist.length - 1];
-    if (!prev || prev.screen === 'attract' || prev.screen === 'home') return null;
-    if (prev.screen === 'chief') return chiefByNo(prev.chief).shortName;
-    if (prev.screen === 'timeline') {
-      if (prev.year != null) return String(prev.year);
-      var d = C.decades[prev.decade]; return d.from + '–' + d.to;
-    }
-    if (prev.screen === 'connect') return prev.cmode ? (prev.cval != null ? 'your result' : 'your choices') : 'Find your connection';
-    var sec = SECTIONS[prev.screen];
-    return sec ? (sec.nav || sec.name) : 'previous page';
-  }
-  function renderBack() {
-    var label = state.screen === 'home' || state.screen === 'attract' ? null : backTarget();
-    el.back.classList.toggle('hidden', !label);
-    if (label) $('btn-back-label').textContent = label;
-  }
-  function goHome() { state.hist = []; state.screen = 'home'; state.year = null; state.cmode = null; state.cval = null; show(); }
-
-  function showScreen() {
-    var id = state.screen;
-    Object.keys(el.screens).forEach(function (k) { el.screens[k].classList.toggle('active', k === id); });
-    el.topbar.classList.toggle('hidden', id === 'attract');
-    renderBack();
-    $('btn-home').classList.toggle('is-here', id === 'home');
-    lists = {};
-    var r = RENDER[id];
-    if (r) {
-      el.screens[id].innerHTML = r();
-      initScrollers(el.screens[id]);
-      if (AFTER[id]) AFTER[id](el.screens[id]);
-    }
-    document.querySelectorAll('.screen:not(.active) video').forEach(function (v) { v.pause(); });
-    renderChapters();
-    if (id === 'attract') startAttract(); else stopAttract();
-    if (id === 'home') startHomeFacts(); else stopHomeFacts();
-  }
-
-  function renderChapters() {
-    var cur = state.screen === 'chief' ? 'chiefs' : state.screen;
-    el.chapters.innerHTML = EXPLORE_KEYS.map(function (k) {
-      return '<button class="chapter' + (k === cur ? ' is-on' : '') + (state.visited[k] ? ' is-visited' : '') + '" data-act="go" data-arg="' + k + '">' +
-        '<span class="chapter-n">' + (SECTIONS[k].n ? esc(SECTIONS[k].n) : ICON.play) + '</span><span class="chapter-l">' + esc(SECTIONS[k].nav) + '</span></button>';
-    }).join('');
-    if (motion.jet) el.chapters.appendChild(motion.jet);
-    positionTabJet(cur);
-  }
-
-  // ============================================================
-  // Screens
-  // ============================================================
-  var RENDER = {}, AFTER = {};
-
-  // ---------- Welcome (attract) ----------
-  var attractFacts = C.events.filter(function (e) { return /\d{1,2} [A-Z][a-z]+ \d{4}/.test(e.date) || e.photos; });
-  var attractPhotos = (function () {
-    var pool = [];
-    C.events.forEach(function (e) { if (e.photos && e.photos[0]) pool.push(e.photos[0]); });
-    return shuffle(pool).slice(0, 14);
-  })();
-  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-  function onThisDay() {
-    var now = new Date(), key = now.getDate() + ' ' + MONTHS[now.getMonth()];
-    return C.events.filter(function (e) { return e.date.indexOf(key + ' ') === 0; });
-  }
-
-  RENDER.attract = function () {
-    var now = new Date(), years = now.getFullYear() - 1964;
-    var lights = '';
-    for (var i = 0; i < 26; i++) lights += '<span class="runway-light" style="animation-delay:' + (i * 0.09).toFixed(2) + 's"></span>';
-    return '' +
-      '<div class="attract" data-act="begin">' +
-        '<div class="attract-slides" id="attract-slides">' +
-          '<div class="attract-slide"></div><div class="attract-slide"></div>' +
-        '</div>' +
-        '<video class="attract-video" id="attract-video" muted loop playsinline autoplay src="' + esc(C.introFilm) + '"></video>' +
-        '<div class="attract-shade"></div>' +
-
-        '<header class="attract-bar">' +
-          '<div class="attract-crests">' +
-            '<img src="assets/icons/naf.png" alt="Nigerian Air Force" />' +
-            '<span class="attract-crest-text"><b>Nigerian Air Force</b><span>Established 18 April 1964</span></span>' +
-            '<span class="attract-crest-rule"></span>' +
-            '<img src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College" />' +
-            '<span class="attract-crest-text"><b>Armed Forces Command and Staff College</b><span>Nigeria</span></span>' +
-          '</div>' +
-          '<div class="attract-clock"><span id="attract-date"></span><span class="attract-time" id="attract-time"></span></div>' +
-        '</header>' +
-
-        '<div class="attract-hero">' +
-          '<div class="attract-kicker">SK Aneke Hall of Fame · Department of Air Warfare</div>' +
-          '<h1 class="attract-title">History</h1>' +
-          '<p class="attract-lede">The story of the Nigerian Air Force: ' + years + ' years of the people, the aircraft and the moments that built it.</p>' +
-          '<div class="attract-figures">' +
-            figure(String(years), 'years of service') +
-            figure(String(PAST.length), 'past Chiefs') +
-            figure(String(C.events.length), 'recorded moments') +
-            figure(String(now.getFullYear() - 1976), 'years of the College') +
-          '</div>' +
-        '</div>' +
-
-        '<aside class="attract-card" id="attract-card"></aside>' +
-
-        '<div class="attract-begin">' +
-          '<div class="runway">' + lights + '</div>' +
-          '<div class="attract-begin-label"><span>Touch anywhere to begin</span>' + ICON.next + '</div>' +
-        '</div>' +
-      '</div>';
-  };
-  function figure(n, label) { return '<div class="figure"><span class="figure-n">' + n + '</span><span class="figure-l">' + label + '</span></div>'; }
-  AFTER.attract = function (root) {
-    var v = root.querySelector('#attract-video');
-    v.addEventListener('error', function () { v.classList.add('hidden'); });
-    v.addEventListener('playing', function () { root.querySelector('.attract').classList.add('has-video'); });
-    var p = v.play(); if (p && p.catch) p.catch(function () {});
-    buildWelcomeMotion(root);
-  };
-  var attractIdx = 0;
-  function startAttract() {
-    stopAttract();
-    attractIdx = 0;
-    stepAttract();
-    attractTimer = setInterval(stepAttract, ATTRACT_SLIDE_MS);
-  }
-  function stopAttract() {
-    clearInterval(attractTimer); attractTimer = null;
-    var v = $('attract-video');
-    if (v && state.screen !== 'attract') v.pause();
-  }
-  function stepAttract() {
-    var slides = document.querySelectorAll('#attract-slides .attract-slide');
-    if (slides.length === 2 && attractPhotos.length) {
-      var incoming = slides[attractIdx % 2], outgoing = slides[(attractIdx + 1) % 2];
-      incoming.style.backgroundImage = 'url("' + attractPhotos[attractIdx % attractPhotos.length] + '")';
-      incoming.classList.remove('on'); void incoming.offsetWidth; incoming.classList.add('on');
-      outgoing.classList.remove('on');
-    }
-    var now = new Date();
-    var dEl = $('attract-date'), tEl = $('attract-time');
-    if (dEl) dEl.textContent = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()] + ', ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
-    if (tEl) tEl.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-    var card = $('attract-card');
-    if (card) {
-      var today = onThisDay();
-      var e = today.length && attractIdx % 3 === 0 ? today[(attractIdx / 3) % today.length] : attractFacts[Math.floor(Math.random() * attractFacts.length)];
-      var label = today.indexOf(e) >= 0 ? 'On this day' : 'From the archive';
-      var ph = e.photos && e.photos[0];
-      card.classList.remove('on');
-      setTimeout(function () {
-        card.innerHTML = (ph ? frame(ph, 'attract-card-img') : '') +
-          '<span class="attract-card-body"><span class="eyebrow">' + label + '</span>' +
-          '<span class="attract-card-date">' + esc(e.date) + '</span>' +
-          '<span class="attract-card-title">' + esc(e.title) + '</span></span>' +
-          '<span class="attract-card-progress"></span>';
-        card.classList.add('on');
-      }, 450);
-    }
-    attractIdx++;
-  }
-
-  // ---------- Home: a contents page over the intro film ----------
-  RENDER.home = function () {
-    var intro = filmById('intro');
-    var rows = [
-      { key: 'timeline', img: firstPhoto(eventsInYear(1964)), desc: C.events.length + ' recorded moments from 1961 to today, decade by decade and year by year.' },
-      { key: 'chiefs', img: portraitOf(LAST_PAST), desc: 'The ' + PAST.length + ' officers who led the service from ' + yr(PAST[0].from) + ' to ' + yr(LAST_PAST.to) + ', their tenures drawn to scale, and the story of each.' },
-      { key: 'college', img: C.chronicles.college.hero, desc: 'From the Army Command and Staff College of 1976 to today’s tri-service College in Nigeria.' },
-      { key: 'daw', img: C.chronicles.daw.hero, desc: 'How the College prepares commanders of Nigeria and her allies to plan and use airpower.' },
-    ];
-    var nVisited = EXPLORE_KEYS.filter(function (k) { return state.visited[k]; }).length;
-    var collage = shuffle(ARCHIVE.filter(function (a) { return a.group === 'timeline'; })).slice(0, 4);
-    var lights = EXPLORE_KEYS.map(function (k) { return '<span class="progress-light' + (state.visited[k] ? ' is-on' : '') + '"></span>'; }).join('');
-
-    return '' +
-      '<div class="home">' +
-        (intro ? '<video class="home-video" muted loop playsinline autoplay src="' + esc(intro.src) + '"></video>' : '') +
-        '<div class="home-shade"></div>' +
-        '<div class="home-left">' +
-          '<header class="masthead masthead--home"><div class="masthead-kicker">Welcome to SK Aneke Hall of Fame</div>' +
-            '<h1 class="masthead-title">Explore the history</h1>' +
-            '<p class="masthead-lede">' + esc(C.meta.tagline) + ' Choose one of the four sections, or begin with the film.</p></header>' +
-          (intro ? '<button class="home-film" data-act="film" data-arg="intro">' +
-            '<span class="home-film-play">' + ICON.play + '</span>' +
-            '<span class="home-film-text"><span class="eyebrow">Start here' + (intro.duration ? ' · ' + esc(intro.duration) : '') + '</span><span class="home-film-title">' + esc(intro.title) + '</span></span>' +
-          '</button>' : '') +
-          '<div class="home-fact" id="home-fact"></div>' +
-        '</div>' +
-        '<nav class="contents">' +
-          '<div class="home-progress"><div class="progress-lights">' + lights + '</div>' +
-            '<span>' + (nVisited === 0 ? EXPLORE_KEYS.length + ' sections to explore' : nVisited === EXPLORE_KEYS.length ? 'All four sections explored' : nVisited + ' of ' + EXPLORE_KEYS.length + ' sections explored') + '</span></div>' +
-          rows.map(function (r, i) {
-          var sec = SECTIONS[r.key];
-          var thumb = r.map ? '<span class="contents-thumb contents-thumb--map">' + nigeriaSvg([], null, true) + '</span>'
-            : r.collage ? '<span class="contents-thumb contents-thumb--collage">' + collage.map(function (a) { return frame(a.src, 'contents-cell'); }).join('') + '</span>'
-            : frame(r.img, 'contents-thumb');
-          return '<button class="contents-row' + (state.visited[r.key] ? ' is-visited' : '') + '" data-act="go" data-arg="' + r.key + '" style="animation-delay:' + (i * 70) + 'ms">' +
-            '<span class="contents-n">' + esc(sec.n) + '</span>' +
-            '<span class="contents-text"><span class="contents-title">' + esc(sec.name || sec.nav) + '</span>' +
-              '<span class="contents-desc">' + esc(r.desc) + '</span></span>' +
-            thumb +
-            '<span class="contents-go">' + (state.visited[r.key] ? ICON.check : ICON.next) + '</span>' +
-          '</button>';
-        }).join('') + '</nav>' +
-      '</div>';
-  };
-  AFTER.home = function (root) {
-    var v = root.querySelector('.home-video');
-    if (!v) return;
-    v.addEventListener('error', function () { v.classList.add('hidden'); });
-    var p = v.play(); if (p && p.catch) p.catch(function () {});
-  };
-
-  function startHomeFacts() {
-    stopHomeFacts();
-    var pool = shuffle(C.events.filter(function (e) { return e.photos && e.photos.length; }));
-    var i = 0;
-    function step() {
-      var node = $('home-fact'); if (!node) return;
-      var e = pool[i++ % pool.length];
-      node.classList.remove('on');
-      setTimeout(function () {
-        node.innerHTML = '<button class="home-fact-btn" data-act="year" data-arg="' + e.year + '">' +
-          frame(e.photos[0], 'home-fact-img') +
-          '<span class="home-fact-text"><span class="eyebrow">From the archive</span><span class="home-fact-date">' + esc(e.date) + '</span><span class="home-fact-title">' + esc(e.title) + '</span></span>' +
-          '<span class="home-fact-progress"></span>' +
-        '</button>';
-        node.classList.add('on');
-      }, 400);
-    }
-    step();
-    homeFactTimer = setInterval(step, HOME_FACT_MS);
-  }
-  function stopHomeFacts() { clearInterval(homeFactTimer); homeFactTimer = null; }
-
-  // ---------- History of the NAF: decades, ruler and years ----------
-  RENDER.timeline = function () {
-    var d = C.decades[state.decade];
-    var chips = C.decades.map(function (dd, i) {
-      return '<button class="decade-chip' + (i === state.decade ? ' is-on' : '') + '" data-act="decade" data-arg="' + i + '">' +
-        '<span class="decade-chip-range">' + dd.from + ' – ' + dd.to + '</span><span class="decade-chip-title">' + esc(dd.title) + '</span></button>';
-    }).join('');
-
-    var ruler = '';
-    for (var y = YEAR_FIRST; y <= YEAR_LAST; y++) {
-      var n = countsByYear[y] || 0, di = decadeOf(y);
-      var cls = 'sky-year' + (n ? ' has-events' : '') + (state.year === y ? ' is-on' : '') + (di === state.decade ? ' in-decade' : '');
-      ruler += '<button class="' + cls + '"' + (n ? ' data-act="year" data-arg="' + y + '"' : '') + ' style="width:' + YEAR_W + 'px">' +
-        (C.decades[di] && C.decades[di].from === y ? '<span class="sky-decade">' + esc(C.decades[di].title) + '</span>' : '') +
-        (n ? '<span class="sky-count">' + n + '</span>' : '') +
-        '<span class="sky-bar" style="height:' + (n ? Math.min(64, 10 + n * 6) : 3) + 'px"></span>' +
-        '<span class="sky-label">' + y + '</span>' +
-      '</button>';
-    }
-
-    var body = state.year == null ? timelineDecadeBody(d) : timelineYearBody(state.year);
-    return '' +
-      '<div class="timeline">' +
-        '<div class="timeline-head">' + masthead('timeline', null, 'masthead--compact') +
-          '<div class="decade-chips">' + chips + '</div>' +
-        '</div>' +
-        '<div class="ruler-wrap">' +
-          '<div class="ruler" data-scroll="x" id="ruler"><div class="ruler-track" style="padding:0 ' + (STAGE_W / 2 - YEAR_W / 2) + 'px">' + ruler + '</div></div>' +
-        '</div>' +
-        '<div class="timeline-body">' + body + '</div>' +
-      '</div>';
-  };
-
-  function timelineDecadeBody(d) {
-    var years = eventYears.filter(function (y) { return y >= d.from && y <= d.to; });
-    var evs = C.events.filter(function (e) { return e.year >= d.from && e.year <= d.to; });
-    var hero = firstPhoto(evs);
-    var films = C.films.filter(function (f) { return f.year && f.year >= d.from && f.year <= d.to; });
-    return '' +
-      '<div class="decade">' +
-        '<div class="decade-left">' +
-          frame(hero, 'decade-hero', 'Photograph of the decade') +
-          (films.length ? '<div class="decade-films">' + films.map(filmButton).join('') + '</div>' : '') +
-        '</div>' +
-        '<div class="decade-right">' +
-          '<div class="eyebrow">' + d.from + ' – ' + d.to + ' · ' + plural(evs.length, 'recorded moment') + ' in ' + plural(years.length, 'year') + '</div>' +
-          '<h3 class="decade-title">' + esc(d.title) + '</h3>' +
-          '<p class="decade-summary">' + esc(d.summary) + '</p>' +
-          '<div class="year-cards" data-scroll="y">' + years.map(function (y) {
-            var first = eventsInYear(y)[0];
-            return '<button class="year-card" data-act="year" data-arg="' + y + '">' +
-              '<span class="year-card-y">' + y + '</span>' +
-              '<span class="year-card-t">' + esc(first.title) + '</span>' +
-              '<span class="year-card-n">' + plural(countsByYear[y], 'moment') + ICON.next + '</span>' +
-            '</button>';
-          }).join('') + '</div>' +
-        '</div>' +
-      '</div>';
-  }
-
-  function timelineYearBody(y) {
-    var evs = eventsInYear(y);
-    var cas = casFor(y);
-    var idx = eventYears.indexOf(y);
-    var prevY = idx > 0 ? eventYears[idx - 1] : null, nextY = idx < eventYears.length - 1 ? eventYears[idx + 1] : null;
-
-    var key = 'year-' + y;
-    lists[key] = [];
-    evs.forEach(function (e) {
-      (e.photos || []).forEach(function (p, i) { lists[key].push({ src: p, date: e.date, title: e.title, text: i === 0 ? (e.caption || '') : '' }); });
-    });
-
-    var casCard = cas && !isPast(cas)
-      ? '<div class="cas-card">' + frame(portraitOf(cas), 'cas-photo', initials(cas.name)) +
-          '<span class="cas-text"><span class="eyebrow">Chief of the Air Staff in ' + y + '</span><span class="cas-name">' + esc(cas.name) + '</span><span class="cas-sub">Serving Chief of the Air Staff</span></span></div>'
-      : cas
-      ? '<button class="cas-card" data-act="chief" data-arg="' + cas.no + '">' + frame(portraitOf(cas), 'cas-photo', initials(cas.name)) +
-          '<span class="cas-text"><span class="eyebrow">Chief of the Air Staff in ' + y + '</span><span class="cas-name">' + esc(cas.name) + '</span><span class="cas-sub">' + esc(chiefLabel(cas)) + ' · tap for his story</span></span></button>'
-      : '<div class="cas-card cas-card--none"><span class="cas-text"><span class="eyebrow">Before the first commander</span><span class="cas-name">The Air Force did not yet exist</span><span class="cas-sub">Formally established 18 April 1964</span></span></div>';
-
-    var photoI = 0;
-    var cards = evs.map(function (e) {
-      var f = e.film ? filmById(e.film) : null;
-      var ph = e.photos || [];
-      var startI = photoI; photoI += ph.length;
-      return '<article class="event">' +
-        '<div class="event-media">' +
-          (ph.length ? '<button class="event-photo"' + zoomAttrs(key, startI) + '>' + frame(ph[0], 'event-frame', 'Photograph') + '<span class="zoom-badge">' + ICON.zoom + '</span></button>'
-                     : '<div class="event-photo event-photo--none">' + frame('', 'event-frame', 'No photograph in the archive yet') + '</div>') +
-          (ph.length > 1 ? '<div class="event-thumbs">' + ph.slice(1, 6).map(function (p, j) {
-            var more = j === 4 && ph.length > 6 ? '<span class="thumb-more">+' + (ph.length - 6) + '</span>' : '';
-            return '<button class="event-thumb"' + zoomAttrs(key, startI + j + 1) + '>' + frame(p, 'thumb-frame') + more + '</button>';
-          }).join('') + '</div>' : '') +
-          (e.caption ? '<div class="event-caption">' + esc(e.caption) + '</div>' : '') +
-        '</div>' +
-        '<div class="event-text">' +
-          '<div class="eyebrow">' + esc(e.date) + (e.state ? ' · ' + esc(e.state) : '') + '</div>' +
-          '<h4 class="event-title">' + esc(e.title) + '</h4>' +
-          paras(e.text) +
-          (f ? '<button class="watch-btn" data-act="film" data-arg="' + f.id + '">' + ICON.play + '<span>Watch: ' + esc(f.title) + '</span></button>' : '') +
-        '</div>' +
-      '</article>';
-    }).join('');
-
-    return '' +
-      '<div class="year">' +
-        '<div class="year-left">' +
-          '<div class="year-big">' + y + '</div>' +
-          '<div class="eyebrow">' + esc(C.decades[decadeOf(y)].title) + ' · ' + plural(evs.length, 'moment') + '</div>' +
-          casCard +
-          '<div class="year-nav">' +
-            '<button class="ghost-btn' + (prevY ? '' : ' is-off') + '" data-act="year" data-arg="' + (prevY || '') + '">' + ICON.prev + (prevY || '') + '</button>' +
-            '<button class="ghost-btn" data-act="year-clear">All of ' + C.decades[decadeOf(y)].from + '–' + C.decades[decadeOf(y)].to + '</button>' +
-            '<button class="ghost-btn' + (nextY ? '' : ' is-off') + '" data-act="year" data-arg="' + (nextY || '') + '">' + (nextY || '') + ICON.next + '</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="year-events" data-scroll="y">' + cards + '</div>' +
-      '</div>';
-  }
-
-  AFTER.timeline = function (root) {
-    var r = root.querySelector('#ruler');
-    r.scrollLeft = state.rulerX;
-    r.addEventListener('scroll', function () { state.rulerX = r.scrollLeft; });
-    var target = state.year != null ? state.year : C.decades[state.decade].from + 4;
-    glideTo(r, 'x', (target - YEAR_FIRST) * YEAR_W, 700);
-    markRulerYear(root);
-  };
-
-  function filmButton(f) {
-    return '<button class="film-chip' + (filmSoon(f) ? ' is-soon' : '') + '" data-act="film" data-arg="' + f.id + '">' + frame(filmStill(f), 'film-chip-img') +
-      '<span class="film-chip-play">' + ICON.play + '</span>' +
-      '<span class="film-chip-text"><span class="eyebrow">' + (filmSoon(f) ? 'Film coming soon' : esc(f.subtitle)) + '</span><span class="film-chip-title">' + esc(f.title) + '</span></span></button>';
-  }
-
-  // ---------- Films ----------
-  RENDER.films = function () {
-    return '' +
-      '<div class="films">' +
-        masthead('films', C.films.length + ' short films, from the first cadets to the sixtieth anniversary. Each plays full screen and ends with a way into the written history.' +
-            (C.films.some(filmSoon) ? ' Films marked “Coming soon” are still being added.' : '')) +
-        '<div class="film-grid">' + C.films.map(function (f, i) {
-          var soon = filmSoon(f);
-          return '<button class="film-card' + (i === 0 ? ' film-card--lead' : '') + (soon ? ' is-soon' : '') + '" data-act="film" data-arg="' + f.id + '">' +
-            '<span class="film-card-media">' + frame(filmStill(f), 'film-card-img') + '<span class="film-card-play">' + ICON.play + '</span>' +
-              (soon ? '<span class="soon-badge">Coming soon</span>' : '') +
-              (state.watched[f.id] ? '<span class="tile-visited">' + ICON.check + 'Watched</span>' : '') + '</span>' +
-            '<span class="film-card-body"><span class="eyebrow">' + esc(f.subtitle) + (f.duration ? ' · ' + esc(f.duration) : '') + '</span>' +
-              '<span class="film-card-title">' + esc(f.title) + '</span>' +
-              '<span class="film-card-desc">' + esc(f.description) + '</span></span>' +
-          '</button>';
-        }).join('') + '</div>' +
-      '</div>';
-  };
-
-  // ---------- Chiefs of the Air Staff ----------
-  var LINEAGE_FROM = 1963, LINEAGE_TO = 2027;
-  RENDER.chiefs = function () {
-    var span = LINEAGE_TO - LINEAGE_FROM, W = 1760;
-    function x(iso) { var d = parseISO(iso); return ((d.getFullYear() + d.getMonth() / 12 + d.getDate() / 365) - LINEAGE_FROM) / span * W; }
-    var segs = PAST.map(function (c, i) {
-      var a = x(c.from), b = c.to ? x(c.to) : x(new Date().toISOString().slice(0, 10));
-      var w = Math.max(6, b - a);
-      return '<button class="lineage-seg' + (i % 2 ? ' alt' : '') + (c.serving ? ' serving' : '') + '" data-act="chief" data-arg="' + c.no + '" style="left:' + a.toFixed(1) + 'px;width:' + w.toFixed(1) + 'px" title="' + esc(c.shortName) + '">' +
-        (w > 30 ? '<span>' + c.no + '</span>' : '') + '</button>';
-    }).join('');
-    var ticks = '';
-    for (var y = 1965; y <= 2025; y += 5) ticks += '<span class="lineage-tick' + (y % 10 === 0 ? ' major' : '') + '" style="left:' + ((y - LINEAGE_FROM) / span * W).toFixed(1) + 'px">' + (y % 10 === 0 ? y : '') + '</span>';
-
-    var aneke = filmById('lineage');
-    return '' +
-      '<div class="chiefs">' +
-        '<div class="page-head">' +
-          masthead('chiefs', 'Two German commanders, then ' + (PAST.length - 2) + ' Nigerian Chiefs of the Air Staff from 1966 to ' + yr(LAST_PAST.to) + '. The bar below draws every tenure to scale; the gallery runs in order of appointment.') +
-          (aneke ? filmButton(aneke) : '') +
-        '</div>' +
-        '<div class="lineage"><div class="lineage-bar">' + segs + '</div><div class="lineage-axis">' + ticks + '</div></div>' +
-        '<div class="chief-strip" data-scroll="x" id="chief-strip"><div class="chief-strip-track">' +
-          PAST.map(function (c) {
-            return '<button class="chief-card' + (c.serving ? ' chief-card--serving' : '') + '" data-act="chief" data-arg="' + c.no + '">' +
-              frame(portraitOf(c), 'chief-card-photo', initials(c.name)) +
-              '<span class="chief-card-no">' + (c.serving ? 'Serving' : ordinal(c.no)) + '</span>' +
-              '<span class="chief-card-body">' +
-                '<span class="chief-card-name">' + esc(c.shortName) + '</span>' +
-                '<span class="chief-card-years">' + chiefYears(c) + '</span>' +
-                '<span class="chief-card-tenure">' + esc(tenure(c)) + '</span>' +
-              '</span>' +
-            '</button>';
-          }).join('') +
-        '</div></div>' +
-      '</div>';
-  };
-  AFTER.chiefs = function (root) {
-    var strip = root.querySelector('#chief-strip');
-    if (state.chiefStripX) strip.scrollLeft = state.chiefStripX;
-    strip.addEventListener('scroll', function () { state.chiefStripX = strip.scrollLeft; });
-    sweepLineage(root);
-  };
-
-  RENDER.chief = function () {
-    var c = chiefByNo(state.chief);
-    if (!isPast(c)) { c = LAST_PAST; state.chief = c.no; }
-    var i = PAST.indexOf(c);
-    var prev = PAST[i - 1], next = PAST[i + 1];
-    var a = +yr(c.from), b = c.to ? +yr(c.to) : new Date().getFullYear();
-    var evs = C.events.filter(function (e) { return e.year >= a && e.year <= b; });
-    lists.chief = [{ src: c.photo, date: chiefLabel(c), title: c.name, text: chiefYears(c) }];
-    var meta = [['Rank', c.rank], ['In office', fmtDate(c.from) + ' – ' + fmtDate(c.to)], ['Time in office', tenure(c)]];
-    if (c.born) meta.push(['Born', c.born]);
-    if (c.died) meta.push(['Died', c.died]);
-    if (c.state) meta.push(['State of origin', c.state]);
-    return '' +
-      '<div class="chief">' +
-        (portraitOf(c) ? '<div class="chief-bg" style="background-image:url(&quot;' + esc(portraitOf(c)) + '&quot;)"></div>' : '') +
-        '<div class="chief-left">' +
-          '<button class="chief-portrait"' + zoomAttrs('chief', 0) + '>' + frame(portraitOf(c), 'chief-portrait-frame', initials(c.name)) + '</button>' +
-          '<div class="chief-ordinal">' + esc(chiefLabel(c)) + '</div>' +
-          '<div class="chief-pager">' +
-            '<button class="round-btn' + (prev ? '' : ' is-off') + '" data-act="chief" data-arg="' + (prev ? prev.no : '') + '" aria-label="Previous Chief">' + ICON.prev + '</button>' +
-            '<span>' + (i + 1) + ' of ' + PAST.length + '</span>' +
-            '<button class="round-btn' + (next ? '' : ' is-off') + '" data-act="chief" data-arg="' + (next ? next.no : '') + '" aria-label="Next Chief">' + ICON.next + '</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="chief-right" data-scroll="y">' +
-          '<header class="masthead"><div class="masthead-kicker">' + esc(chiefLabel(c)) + '</div>' +
-          '<h2 class="chief-name">' + esc(c.name) + '</h2></header>' +
-          '<div class="chief-meta">' + meta.map(function (m) { return '<div class="meta"><span class="meta-k">' + esc(m[0]) + '</span><span class="meta-v">' + esc(m[1]) + '</span></div>'; }).join('') + '</div>' +
-          paras(c.bio, 'body-text body-text--lead') +
-          (c.achievements && c.achievements.length ? '<h3 class="sub-head">Notable in office</h3><ul class="ach">' + c.achievements.map(function (x) { return '<li>' + ICON.star + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>' : '') +
-          (evs.length ? '<h3 class="sub-head">What happened under his command</h3><div class="mini-events">' + evs.map(miniEvent).join('') + '</div>' : '') +
-          (c.sources && c.sources.length ? '<div class="sources">Sources: ' + c.sources.map(esc).join(' · ') + '</div>' : '') +
-        '</div>' +
-      '</div>';
-  };
-  function miniEvent(e) {
-    return '<button class="mini-event" data-act="year" data-arg="' + e.year + '">' +
-      '<span class="mini-event-y">' + e.year + '</span>' +
-      '<span class="mini-event-body"><span class="mini-event-d">' + esc(e.date) + '</span><span class="mini-event-t">' + esc(e.title) + '</span></span>' +
-      ICON.next + '</button>';
-  }
-
-  // ---------- Chronicles: the College and the Department of Air Warfare ----------
-  function renderChronicle(key) {
-    var ch = C.chronicles[key];
-    var f = C.films.filter(function (x) { return x.section === 'college'; })[0];
-    var lk = 'chron-' + key;
-    lists[lk] = [];
-    if (ch.hero) lists[lk].push({ src: ch.hero, date: ch.eyebrow, title: ch.heroCaption || ch.title, text: '' });
-    var items = ch.items.map(function (it, idx) {
-      var start = lists[lk].length;
-      (it.photos || []).forEach(function (p, j) { lists[lk].push({ src: p, date: it.date, title: it.title, text: j === 0 ? (it.caption || '') : '' }); });
-      var ph = it.photos || [];
-      return '<article class="chron-item' + (idx % 2 ? ' alt' : '') + '">' +
-        '<span class="chron-node"></span>' +
-        '<div class="chron-date">' + esc(it.date) + '</div>' +
-        '<div class="chron-card">' +
-          (ph.length ? '<button class="chron-photo"' + zoomAttrs(lk, start) + '>' + frame(ph[0], 'chron-frame', 'Photograph') + '<span class="zoom-badge">' + ICON.zoom + '</span></button>' : '') +
-          '<div class="chron-text">' +
-            '<h4 class="chron-title">' + esc(it.title) + '</h4>' + paras(it.text) +
-            (ph.length > 1 ? '<div class="event-thumbs">' + ph.slice(1).map(function (p, j) { return '<button class="event-thumb"' + zoomAttrs(lk, start + j + 1) + '>' + frame(p, 'thumb-frame') + '</button>'; }).join('') + '</div>' : '') +
-            (it.caption ? '<div class="event-caption">' + esc(it.caption) + '</div>' : '') +
-          '</div>' +
-        '</div>' +
-      '</article>';
-    }).join('');
-    return '' +
-      '<div class="chron">' +
-        '<div class="chron-left">' +
-          masthead(key, ch.intro) +
-          '<button class="ghost-btn chron-switch" data-act="go" data-arg="' + (key === 'college' ? 'daw' : 'college') + '">' + (key === 'college' ? 'Continue: the Department of Air Warfare' : 'Back to the history of the College') + ICON.next + '</button>' +
-          (ch.hero ? '<button class="chron-hero"' + zoomAttrs(lk, 0) + '>' + frame(ch.hero, 'chron-hero-frame') + '<span class="chron-hero-cap">' + esc(ch.heroCaption || '') + '</span></button>' : '') +
-          '<div class="chron-foot">' +
-            '<span class="chron-count">' + plural(ch.items.length, 'milestone') + ' · ' + esc(ch.items[0].date) + ' – ' + esc(ch.items[ch.items.length - 1].date) + '</span>' +
-            (f ? filmButton(f) : '') +
-          '</div>' +
-        '</div>' +
-        '<div class="chron-right" data-scroll="y"><div class="chron-spine"></div>' + items + '<div class="chron-end">' + ICON.plane + '</div></div>' +
-      '</div>';
-  }
-  RENDER.college = function () { return renderChronicle('college'); };
-  RENDER.daw = function () { return renderChronicle('daw'); };
-
-  // ---------- Fleet & Bases ----------
-  function project(lon, lat) { return [40 + (lon - 2.5) * 75, 40 + (13.95 - lat) * 75]; }
-  function nigeriaSvg(bases, sel, decorative) {
-    var d = 'M' + C.nigeriaOutline.map(function (p) { var q = project(p[0], p[1]); return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L') + 'Z';
-    var marks = (decorative ? C.bases : bases).map(function (b) {
-      var q = project(b.lon, b.lat), on = b.id === sel;
-      if (decorative) return '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="9" class="map-dot"/>';
-      var lx = q[0] + (b.labelDx != null ? b.labelDx : 16), ly = q[1] + (b.labelDy != null ? b.labelDy : 7);
-      return '<g class="map-base' + (on ? ' is-on' : '') + '" data-act="base" data-arg="' + b.id + '">' +
-        (on ? '<circle class="map-ring" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="24"/>' : '') +
-        '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="34" fill="transparent"/>' +
-        '<circle class="map-pin" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="' + (on ? 12 : 8) + '"/>' +
-        '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '">' + esc(b.city) + '</text></g>';
-    }).join('');
-    return '<svg class="nigeria" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid meet"><path class="map-land" d="' + d + '"/>' + marks + '</svg>';
-  }
-
-  RENDER.fleet = function () {
-    var tabs = '<div class="tabs">' +
-      '<button class="tab' + (state.fleetTab === 'bases' ? ' is-on' : '') + '" data-act="fleet-tab" data-arg="bases">' + ICON.pin + 'Bases</button>' +
-      '<button class="tab' + (state.fleetTab === 'aircraft' ? ' is-on' : '') + '" data-act="fleet-tab" data-arg="aircraft">' + ICON.plane + 'Aircraft</button></div>';
-    var head = '<div class="page-head">' +
-      masthead('fleet', state.fleetTab === 'bases'
-        ? 'The service is organised in six Commands: Tactical Air at Makurdi, Special Operations at Bauchi, Mobility at Yenagoa, Air Training at Kaduna, Ground Training at Enugu and Logistics at Lagos. Tap a pin to visit a base.'
-        : C.aircraft.length + ' aircraft types in the order they joined the service, from the Dornier Do-27 of 1964 onwards. Tap one for its story.') +
-      tabs + '</div>';
-    return '<div class="fleet">' + head + (state.fleetTab === 'bases' ? fleetBases() : fleetAircraft()) + '</div>';
-  };
-  function fleetBases() {
-    var b = baseById(state.base);
-    lists.base = [{ src: b.photo, date: b.city + ' · ' + b.state, title: b.role, text: b.caption || '' }];
-    return '' +
-      '<div class="bases">' +
-        '<div class="bases-left">' +
-          '<div class="map-wrap">' + nigeriaSvg(C.bases, b.id) + '</div>' +
-          '<div class="base-chips" data-scroll="x"><div class="base-chips-track">' + C.bases.map(function (x) {
-            return '<button class="chip' + (x.id === b.id ? ' is-on' : '') + '" data-act="base" data-arg="' + x.id + '">' + esc(x.city) + '</button>';
-          }).join('') + '</div></div>' +
-        '</div>' +
-        '<div class="base-panel" data-scroll="y" id="base-panel">' +
-          (b.photo ? '<button class="base-photo"' + zoomAttrs('base', 0) + '>' + frame(b.photo, 'base-frame', b.city) + '<span class="zoom-badge">' + ICON.zoom + '</span></button>' : frame('', 'base-frame', b.city)) +
-          (b.caption ? '<div class="event-caption">' + esc(b.caption) + '</div>' : '') +
-          '<div class="eyebrow">' + ICON.pin + esc(b.state) + '</div>' +
-          '<h3 class="base-city">' + esc(b.city) + '</h3>' +
-          '<div class="base-role">' + esc(b.role) + '</div>' +
-          paras(b.text) +
-        '</div>' +
-      '</div>';
-  }
-  function eraOf(a) { var m = String(a.inService).match(/\d{4}/); return m ? +m[0] : 0; }
-  function fleetAircraft() {
-    var era = ERAS.filter(function (e) { return e.key === state.era; })[0] || ERAS[0];
-    var list = C.aircraft.filter(function (a) { var y = eraOf(a); return y >= era.from && y <= era.to; });
-    lists.aircraft = list.map(function (a) { return { src: a.photo, date: 'In service from ' + a.inService + ' · ' + a.origin + ' · ' + a.role, title: a.name, text: a.note + (a.caption ? '\n\n' + a.caption : '') }; });
-    return '' +
-      '<div class="aircraft">' +
-        '<div class="era-chips">' + ERAS.map(function (e) {
-          var n = C.aircraft.filter(function (a) { var y = eraOf(a); return y >= e.from && y <= e.to; }).length;
-          return '<button class="chip' + (e.key === era.key ? ' is-on' : '') + '" data-act="era" data-arg="' + e.key + '">' + esc(e.label) + ' <span class="chip-n">' + n + '</span></button>';
-        }).join('') + '</div>' +
-        '<div class="aircraft-grid" data-scroll="y">' + list.map(function (a, i) {
-          return '<button class="aircraft-card"' + zoomAttrs('aircraft', i) + '>' +
-            frame(a.photo, 'aircraft-img', a.name) +
-            '<span class="aircraft-year">' + esc(a.inService) + '</span>' +
-            '<span class="aircraft-body"><span class="aircraft-name">' + esc(a.name) + '</span>' +
-            '<span class="aircraft-role">' + esc(a.role) + ' · ' + esc(a.origin) + '</span>' +
-            '<span class="aircraft-note">' + esc(a.note) + '</span></span>' +
-          '</button>';
-        }).join('') + '</div>' +
-      '</div>';
-  }
-
-  // ---------- Find your connection ----------
-  RENDER.connect = function () {
-    var head = masthead('connect', state.cmode ? null : 'Start with something you already know. The Hall of Fame will show you the Chiefs, the bases and the moments that connect to it.', state.cmode ? 'masthead--compact' : '');
-    if (!state.cmode) {
-      var tiles = [
-        { mode: 'state', icon: ICON.pin, title: 'My home state', desc: 'Which Chiefs of the Air Staff came from your state, which bases stand on its soil and what happened there.', cta: 'Pick a state', n: (C.states.length - 1) + ' states and the FCT' },
-        { mode: 'year', icon: ICON.cal, title: 'The year I was born', desc: 'Who commanded the Air Force in your birth year, how old the service was and what it was doing.', cta: 'Pick a year', n: '1930 to 2020' },
-        { mode: 'chief', icon: ICON.person, title: 'A Chief I remember', desc: 'Everything the archive records from the years one Chief of the Air Staff was in command.', cta: 'Pick a Chief', n: C.chiefs.length + ' Commanders and Chiefs' }
-      ];
-      return '<div class="connect">' + head +
-        '<div class="connect-tiles">' + tiles.map(function (t, i) {
-          return '<button class="connect-tile" data-act="cmode" data-arg="' + t.mode + '" style="animation-delay:' + (i * 80) + 'ms">' +
-            '<span class="connect-icon">' + t.icon + '</span><span class="connect-n">' + esc(t.n) + '</span><span class="connect-title">' + esc(t.title) + '</span>' +
-            '<span class="connect-desc">' + esc(t.desc) + '</span><span class="connect-cta">' + esc(t.cta) + ICON.next + '</span></button>';
-        }).join('') + '</div></div>';
-    }
-    if (state.cval == null) return '<div class="connect">' + head + connectPicker() + '</div>';
-    return '<div class="connect">' + connectResult() + '</div>';
-  };
-
-  function stateCounts(st) {
-    return {
-      chiefs: C.chiefs.filter(function (c) { return c.state === st; }).length,
-      bases: C.bases.filter(function (b) { return b.state === st; }).length,
-      events: C.events.filter(function (e) { return e.state === st; }).length
-    };
-  }
-  function connectPicker() {
-    if (state.cmode === 'state') {
-      return '<div class="pick-head"><h3 class="pick-title">Which state do you call home?</h3><p class="section-intro">All 36 states and the Federal Capital Territory. A gold mark means the archive already holds something from there.</p></div>' +
-        '<div class="state-grid">' + C.states.map(function (st) {
-          var n = stateCounts(st), any = n.chiefs + n.bases + n.events;
-          return '<button class="state-btn' + (any ? ' has' : '') + '" data-act="cval" data-arg="' + esc(st) + '"><span>' + esc(st) + '</span>' + (any ? '<span class="state-n">' + any + '</span>' : '') + '</button>';
-        }).join('') + '</div>';
-    }
-    if (state.cmode === 'year') {
-      var decs = []; for (var d = 1930; d <= 2020; d += 10) decs.push(d);
-      var years = []; for (var y = state.cdecade; y < state.cdecade + 10 && y <= 2020; y++) years.push(y);
-      return '<div class="pick-head"><h3 class="pick-title">Which year were you born?</h3><p class="section-intro">Choose the decade, then the year.</p></div>' +
-        '<div class="decade-pick">' + decs.map(function (dd) { return '<button class="chip chip--lg' + (dd === state.cdecade ? ' is-on' : '') + '" data-act="cdecade" data-arg="' + dd + '">' + dd + 's</button>'; }).join('') + '</div>' +
-        '<div class="year-pick">' + years.map(function (yy) { return '<button class="year-btn' + (countsByYear[yy] ? ' has' : '') + '" data-act="cval" data-arg="' + yy + '">' + yy + '</button>'; }).join('') + '</div>';
-    }
-    return '<div class="pick-head"><h3 class="pick-title">Which Chief of the Air Staff?</h3><p class="section-intro">Listed in order of service.</p></div>' +
-      '<div class="chief-pick">' + C.chiefs.map(function (c) {
-        return '<button class="chief-pick-btn" data-act="cval" data-arg="' + c.no + '">' + frame(portraitOf(c), 'chief-pick-photo', initials(c.name)) +
-          '<span class="chief-pick-text"><span class="chief-pick-name">' + esc(c.shortName) + '</span><span class="chief-pick-years">' + chiefYears(c) + '</span></span></button>';
-      }).join('') + '</div>';
-  }
-  function connectResult() {
-    var r = { chiefs: [], bases: [], events: [], eyebrow: '', title: '', sub: '', chiefsHead: '', eventsHead: '', empty: '' };
-    if (state.cmode === 'state') {
-      var st = state.cval;
-      r.chiefs = C.chiefs.filter(function (c) { return c.state === st; });
-      r.bases = C.bases.filter(function (b) { return b.state === st; });
-      r.events = C.events.filter(function (e) { return e.state === st; });
-      r.eyebrow = 'Your state';
-      r.title = st + ' and the Nigerian Air Force';
-      r.sub = [r.chiefs.length ? plural(r.chiefs.length, 'Chief of the Air Staff', 'Chiefs of the Air Staff') : 'No Chief of the Air Staff yet', r.bases.length ? plural(r.bases.length, 'base') : 'no base recorded', r.events.length ? plural(r.events.length, 'event') : 'no events recorded yet'].join(' · ');
-      r.chiefsHead = 'Chiefs of the Air Staff from ' + st;
-      r.eventsHead = 'Moments in ' + st;
-      r.empty = 'The archive for ' + st + ' is still growing. The Nigerian Air Force welcomes photographs and records from your community.';
-    } else if (state.cmode === 'year') {
-      var y = +state.cval, c = casFor(y), diff = y - 1964;
-      r.events = eventsInYear(y);
-      r.eventsHead = 'What the Air Force was doing in ' + y;
-      if (!r.events.length) { r.events = C.events.filter(function (e) { return Math.abs(e.year - y) <= 2; }); r.eventsHead = 'Closest recorded moments to ' + y; }
-      r.eyebrow = 'Your birth year · ' + y;
-      r.title = y < 1964 ? 'You were born ' + plural(1964 - y, 'year') + ' before the Air Force' : y === 1964 ? 'You and the Air Force were born the same year' : 'The Air Force was ' + plural(diff, 'year') + ' old when you were born';
-      r.sub = c ? (c.serving ? 'Serving Chief of the Air Staff: ' : 'Commanding the Air Force that year: ') + c.name : (y < 1963 ? 'There was no Nigerian Air Force yet.' : '');
-      r.chiefs = c ? [c] : [];
-      r.chiefsHead = 'Who commanded the Air Force in ' + y;
-      r.empty = 'Before 1961 there was no air force to record. Open the history timeline to begin in 1961.';
-    } else {
-      var ch = chiefByNo(+state.cval), a = +yr(ch.from), b = ch.to ? +yr(ch.to) : new Date().getFullYear();
-      r.chiefs = [ch];
-      r.events = C.events.filter(function (e) { return e.year >= a && e.year <= b; });
-      r.eyebrow = chiefLabel(ch);
-      r.title = 'Under the command of ' + ch.shortName;
-      r.sub = chiefYears(ch) + ' · ' + tenure(ch);
-      r.chiefsHead = 'Open his story';
-      r.eventsHead = 'Moments during his tenure';
-      r.empty = 'No recorded events during this tenure yet.';
-    }
-    var left = '';
-    if (r.chiefs.length) left += '<h3 class="sub-head">' + esc(r.chiefsHead) + '</h3>' + r.chiefs.map(function (c) {
-      return '<button class="cas-card" data-act="chief" data-arg="' + c.no + '">' + frame(portraitOf(c), 'cas-photo', initials(c.name)) +
-        '<span class="cas-text"><span class="eyebrow">' + esc(chiefLabel(c)) + '</span><span class="cas-name">' + esc(c.name) + '</span><span class="cas-sub">' + chiefYears(c) + ' · ' + esc(tenure(c)) + '</span></span></button>';
-    }).join('');
-    if (r.bases.length) left += '<h3 class="sub-head">Air Force presence</h3>' + r.bases.map(function (b) {
-      return '<button class="base-row" data-act="base" data-arg="' + b.id + '">' + frame(b.photo, 'base-row-img', b.city) + '<span class="base-row-text"><span class="base-row-city">' + esc(b.city) + '</span><span class="base-row-role">' + esc(b.role) + '</span></span>' + ICON.next + '</button>';
-    }).join('');
-    if (!left) left = '<div class="connect-empty-left">' + nigeriaSvg([], null, true) + '</div>';
-    return '' +
-      '<div class="result-head">' +
-        '<div><div class="eyebrow">' + esc(r.eyebrow) + '</div><h2 class="result-title">' + esc(r.title) + '</h2><div class="result-sub">' + esc(r.sub) + '</div></div>' +
-        '<button class="ghost-btn" data-act="creset">Try another</button>' +
-      '</div>' +
-      '<div class="result-body">' +
-        '<div class="result-left" data-scroll="y">' + left + '</div>' +
-        '<div class="result-right" data-scroll="y"><h3 class="sub-head">' + esc(r.eventsHead) + '</h3>' +
-          (r.events.length ? '<div class="mini-events">' + r.events.map(miniEvent).join('') + '</div>' : '<p class="body-text muted">' + esc(r.empty) + '</p>') +
-        '</div>' +
-      '</div>';
-  }
-
-  // ---------- Photo archive ----------
-  RENDER.archive = function () {
-    var items = state.archive === 'all' ? ARCHIVE : ARCHIVE.filter(function (a) { return a.group === state.archive; });
-    lists.archive = items;
-    return '' +
-      '<div class="archive">' +
-        '<div class="page-head">' +
-          masthead('archive', 'Every photograph in the Hall of Fame. Tap one to see it full screen, read what it shows and go to the story it belongs to.') +
-          '<div class="figure figure--right"><span class="figure-n">' + items.length + '</span><span class="figure-l">photographs</span></div>' +
-        '</div>' +
-        '<div class="era-chips">' + ARCHIVE_GROUPS.map(function (g) {
-          var n = g.key === 'all' ? ARCHIVE.length : ARCHIVE.filter(function (a) { return a.group === g.key; }).length;
-          return '<button class="chip' + (g.key === state.archive ? ' is-on' : '') + '" data-act="archive" data-arg="' + g.key + '">' + esc(g.label) + ' <span class="chip-n">' + n + '</span></button>';
-        }).join('') + '</div>' +
-        '<div class="archive-grid" data-scroll="y">' + items.map(function (a, i) {
-          return '<button class="archive-cell"' + zoomAttrs('archive', i) + '>' + frame(a.src, 'archive-img') +
-            (a.year ? '<span class="archive-year">' + a.year + '</span>' : '') + '</button>';
-        }).join('') + '</div>' +
-      '</div>';
-  };
-
-  // ============================================================
-  // Photo viewer
-  // ============================================================
-  function openLightbox(key, i) {
-    var list = lists[key];
-    if (!list || !list.length) return;
-    lightbox.list = list.filter(function (x) { return x.src; });
-    if (!lightbox.list.length) return;
-    lightbox.i = Math.max(0, Math.min(lightbox.list.indexOf(list[i]), lightbox.list.length - 1));
-    renderLightbox();
-    el.lightbox.classList.remove('hidden');
-  }
-  function renderLightbox() {
-    var it = lightbox.list[lightbox.i];
-    var img = $('lightbox-img');
-    img.classList.remove('missing');
-    img.src = it.src;
-    $('lightbox-date').textContent = it.date || '';
-    $('lightbox-count').textContent = lightbox.list.length > 1 ? (lightbox.i + 1) + ' / ' + lightbox.list.length : '';
-    $('lightbox-title').textContent = it.title || '';
-    $('lightbox-text').innerHTML = paras(String(it.text || '').split(/\n\n+/).filter(Boolean), 'lightbox-p');
-    $('lightbox-link').classList.toggle('hidden', !it.link);
-    el.lightbox.querySelector('.lightbox-nav--prev').classList.toggle('is-off', lightbox.list.length < 2);
-    el.lightbox.querySelector('.lightbox-nav--next').classList.toggle('is-off', lightbox.list.length < 2);
-    var fig = $('lightbox-figure');
-    fig.classList.remove('enter'); void fig.offsetWidth; fig.classList.add('enter');
-  }
-  function stepLightbox(d) {
-    var n = lightbox.list.length; if (n < 2) return;
-    lightbox.i = (lightbox.i + d + n) % n;
-    renderLightbox();
-  }
-  function closeLightbox() { el.lightbox.classList.add('hidden'); }
-  function initLightboxSwipe() {
-    var fig = $('lightbox-figure'), sx = null;
-    fig.addEventListener('pointerdown', function (e) { sx = e.clientX; });
-    fig.addEventListener('pointerup', function (e) {
-      if (sx == null) return;
-      var dx = (e.clientX - sx) / state.scale; sx = null;
-      if (Math.abs(dx) > 80) stepLightbox(dx < 0 ? 1 : -1);
+    qsa('.dock-item', dom.dockItems).forEach(function (btn, i) {
+      btn.classList.toggle('is-on', SECTIONS[i].key === activeKey);
     });
   }
 
-  // ============================================================
-  // Film player
-  // ============================================================
-  function openFilm(id) {
-    var f = filmById(id); if (!f) return;
-    film = f;
-    var v = el.video;
-    $('player-title').textContent = f.title;
-    $('player-sub').textContent = f.subtitle || '';
-    $('player-missing').classList.toggle('hidden', !filmSoon(f));
-    $('player-missing-file').textContent = (f.year ? 'Meanwhile, read the story of ' + f.year + ' in the history of the Air Force.' : 'Meanwhile, explore the written history.');
-    $('player-read').textContent = f.year ? 'Read the story of ' + f.year : f.section === 'chiefs' ? 'Meet the Chiefs' : f.section === 'college' ? 'Read about the College' : 'Explore the history';
-    var nx = C.films[(C.films.indexOf(f) + 1) % C.films.length];
-    $('player-next').innerHTML = 'Next: ' + esc(nx.title) + ICON.next;
-    setPlayIcon(false);
-    $('player-scrub-fill').style.width = '0%';
-    $('player-time').textContent = '0:00 / 0:00';
-    if (filmSoon(f)) v.removeAttribute('src'); else v.src = f.src;
-    el.player.classList.toggle('is-soon', filmSoon(f));
-    el.player.classList.remove('hidden');
-    duckAmbient(true);
-    if (!filmSoon(f)) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
-  }
-  function closeFilm() {
-    el.video.pause();
-    el.video.removeAttribute('src'); el.video.load();
-    el.player.classList.add('hidden');
-    film = null;
-    duckAmbient(false);
-    if (state.screen === 'films') show();
-  }
-  function setPlayIcon(playing) { el.player.classList.toggle('is-playing', playing); }
-  function mmss(t) { t = Math.max(0, Math.floor(t || 0)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
-  function initPlayer() {
-    var v = el.video;
-    v.addEventListener('play', function () { setPlayIcon(true); });
-    v.addEventListener('pause', function () { setPlayIcon(false); });
-    v.addEventListener('ended', function () { setPlayIcon(false); el.player.classList.add('is-ended'); });
-    v.addEventListener('playing', function () { el.player.classList.remove('is-ended'); if (film) state.watched[film.id] = true; });
-    v.addEventListener('timeupdate', function () {
-      $('player-time').textContent = mmss(v.currentTime) + ' / ' + mmss(v.duration);
-      $('player-scrub-fill').style.width = (v.duration ? v.currentTime / v.duration * 100 : 0) + '%';
-    });
-    v.addEventListener('error', function () { if (film && v.getAttribute('src')) { filmStatus[film.id] = 'missing'; el.player.classList.add('is-soon'); $('player-missing').classList.remove('hidden'); } });
-    $('player-scrub').addEventListener('pointerdown', function (e) {
-      if (!v.duration) return;
-      var r = e.currentTarget.getBoundingClientRect();
-      v.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * v.duration;
-    });
-  }
-  function filmRead() {
-    var f = film; if (!f) return;
-    closeFilm();
-    if (f.year) selectYear(f.year);
-    else if (f.section === 'chiefs') go('chiefs');
-    else if (f.section === 'college') go('college');
-    else go('timeline', { year: null });
-  }
-
-  // ============================================================
-  // Timeline actions
-  // ============================================================
-  function selectYear(y) {
-    y = +y; if (!y) return;
-    var patch = { year: y, decade: decadeOf(y) };
-    if (state.screen === 'timeline') { state.visited.timeline = true; step(patch); }
-    else go('timeline', patch);
-  }
-
-  // ============================================================
-  // Ambient music (optional — silent unless assets/audio/ambient.mp3 exists)
-  // ============================================================
-  function initAmbient() {
-    ambient = new Audio();
-    ambient.loop = true; ambient.volume = AMBIENT_VOLUME; ambient.preload = 'auto';
-    ambient.addEventListener('canplaythrough', function () { ambientReady = true; el.sound.classList.remove('hidden'); }, { once: true });
-    ambient.addEventListener('error', function () { ambient = null; });
-    ambient.src = AMBIENT_SRC;
-  }
-  function startAmbient() { if (ambient && ambientOn && ambient.paused) { var p = ambient.play(); if (p && p.catch) p.catch(function () {}); } }
-  function duckAmbient(on) { if (ambient && ambientReady) ambient.volume = on ? AMBIENT_DUCK : AMBIENT_VOLUME; }
-  function toggleSound() {
-    ambientOn = !ambientOn;
-    el.sound.classList.toggle('is-muted', !ambientOn);
-    if (!ambient) return;
-    if (ambientOn) startAmbient(); else ambient.pause();
-  }
-
-  // ============================================================
-  // Idle handling
-  // ============================================================
-  function touched() {
-    lastTouch = Date.now();
-    if (idleLeft) { idleLeft = 0; el.idle.classList.add('hidden'); }
-  }
-  function idleTick() {
-    if (state.screen === 'attract') return;
-    if (film && !el.video.paused) { lastTouch = Date.now(); return; }
-    if (!idleLeft && Date.now() - lastTouch > IDLE_MS) { idleLeft = IDLE_WARN_S; el.idle.classList.remove('hidden'); }
-    if (idleLeft) {
-      $('idle-count').textContent = idleLeft;
-      idleLeft--;
-      if (idleLeft === 0) resetToAttract();
-    }
-  }
-  function resetToAttract() {
-    el.idle.classList.add('hidden');
-    idleLeft = 0;
-    if (film) closeFilm();
-    closeLightbox();
-    Object.assign(state, { screen: 'attract', hist: [], decade: 0, year: null, rulerX: 0, chief: 1, chiefStripX: 0, fleetTab: 'bases', base: 'kaduna', era: 'all', cmode: null, cval: null, cdecade: 1980, archive: 'all', visited: {}, watched: {}, big: false, reach: false });
-    applyPrefs();
-    if (ambient) ambient.pause();
-    show();
-  }
-  function applyPrefs() {
-    el.stage.classList.toggle('big', state.big);
-    el.stage.classList.toggle('reach', state.reach);
-    $('btn-big').setAttribute('aria-pressed', String(state.big));
-    if ($('btn-reach')) $('btn-reach').setAttribute('aria-pressed', String(state.reach));
-  }
-
-  // ============================================================
-  // Actions (one delegated click handler for the whole stage)
-  // ============================================================
-  var ACTIONS = {
-    begin: function () { state.hist = []; go('home'); startAmbient(); },
-    home: goHome,
-    back: goBack,
-    go: function (arg) { var p = arg.split(':'); go(p[0], p[1] ? { fleetTab: p[1] } : (p[0] === 'timeline' ? { year: null } : null)); },
-    decade: function (arg) { step({ decade: +arg, year: null }); },
-    year: function (arg) { closeLightbox(); selectYear(arg); },
-    'year-clear': function () { step({ year: null }); },
-    chief: function (arg) {
-      if (!arg || !isPast(chiefByNo(+arg))) return;
-      closeLightbox();
-      if (state.screen === 'chief') { step({ chief: +arg }); el.screens.chief.querySelector('.chief-right').scrollTop = 0; }
-      else go('chief', { chief: +arg });
-    },
-    'fleet-tab': function (arg) { step({ fleetTab: arg }); },
-    base: function (arg) {
-      closeLightbox();
-      if (state.screen === 'fleet') step({ base: arg, fleetTab: 'bases' });
-      else go('fleet', { base: arg, fleetTab: 'bases' });
-    },
-    era: function (arg) { step({ era: arg }); },
-    cmode: function (arg) { step({ cmode: arg, cval: null }); },
-    cdecade: function (arg) { state.cdecade = +arg; show(); },
-    cval: function (arg) { step({ cval: state.cmode === 'state' ? arg : +arg }); },
-    creset: function () { step({ cmode: null, cval: null }); },
-    archive: function (arg) { step({ archive: arg }); },
-    zoom: function (arg) { var p = arg.split(':'); openLightbox(p[0], +p[1]); },
-    'lightbox-close': closeLightbox,
-    'lightbox-prev': function () { stepLightbox(-1); },
-    'lightbox-next': function () { stepLightbox(1); },
-    'lightbox-link': function () {
-      var it = lightbox.list[lightbox.i]; if (!it || !it.link) return;
-      closeLightbox();
-      ACTIONS[it.link.act](String(it.link.arg));
-    },
-    film: function (arg) { openFilm(arg); },
-    'film-close': closeFilm,
-    'film-toggle': function () { var v = el.video; if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } else v.pause(); },
-    'film-next': function () { if (!film) return; openFilm(C.films[(C.films.indexOf(film) + 1) % C.films.length].id); },
-    'film-read': filmRead,
-    'toggle-big': function () { state.big = !state.big; applyPrefs(); },
-    'toggle-reach': function () { state.reach = !state.reach; applyPrefs(); },
-    'toggle-sound': toggleSound,
-    'close-app': function () { window.close(); },
-    'idle-stay': function () { touched(); }
-  };
-
-  function onClick(e) {
-    var t = e.target.closest('[data-act]');
-    if (!t || !el.stage.contains(t)) return;
-    if (t.classList.contains('is-off')) return;
-    var fn = ACTIONS[t.getAttribute('data-act')];
-    if (fn) fn(t.getAttribute('data-arg') || '');
-  }
-
-  // ============================================================
-  // MOTION — the flight-curtain language of the AFCSC exhibition
-  // Everything below is decorative. The layers are built here at
-  // runtime, so the markup, copy and content stay exactly as they are.
-  // ============================================================
-
-  var MOTION_COVER_MS = 580;
-  var MOTION_REVEAL_MS = 780;
-  var JET_SHAPES = [
-    'M2 30 C10 26.5 28 25.2 46 25 L104 26 L116 21.5 L119 21.5 L115 29 L115 31 L119 38.5 L116 38.5 L104 34 L46 35 C28 34.8 10 33.5 2 30 Z',
-    'M42 26 L72 3 L81 3 L68 26 Z',
-    'M42 34 L72 57 L81 57 L68 34 Z',
-    'M96 26.3 L107 13 L112.5 13 L107.5 27 Z',
-    'M96 33.7 L107 47 L112.5 47 L107.5 33 Z'
-  ];
-  // Two welcome flypasts: a near pass across the title block, and a distant one
-  // along the top of the sky that comes round again.
-  var FLIGHT_INTRO = 'M 2250 860 C 1700 820 1350 560 980 430 S 260 330 -480 520';
-  var FLIGHT_AMBIENT = 'M -400 210 C 300 120 900 250 1400 150 S 2000 120 2350 60';
-  var DECOR_PATHS = [
-    'M -60 900 C 380 800 700 980 1120 880 S 1640 700 1990 760',
-    'M -60 240 C 300 160 620 280 980 190',
-    'M 1240 1010 C 1420 930 1620 990 1990 880'
-  ];
-  // The cards and links that fade up as they scroll into view.
-  var REVEAL_SELECTORS = {
-    home: '.contents-row',
-    timeline: '.event, .year-card',
-    chiefs: '.chief-card',
-    chief: '.meta, .mini-event',
-    college: '.chron-item',
-    daw: '.chron-item',
-    films: '.film-card',
-    archive: '.archive-cell'
-  };
-
-  var motion = {
-    reduced: false, curtain: null, curtainNum: null, curtainTitle: null, busy: false,
-    screens: null, jet: null, tabX: null, observer: null, current: 'attract',
-    intro: null, ambient: null
-  };
-  try { motion.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { motion.reduced = false; }
-
-  function make(tag, cls, text) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text != null) n.textContent = text;
-    return n;
-  }
-  function jetSvg(cls, faceRight) {
-    var NS = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', '0 0 120 60');
-    svg.setAttribute('aria-hidden', 'true');
-    if (cls) svg.setAttribute('class', cls);
-    // The silhouette is drawn nose-left; the group flips it for markers that fly right.
-    var g = document.createElementNS(NS, 'g');
-    if (faceRight) g.setAttribute('transform', 'translate(120 0) scale(-1 1)');
-    JET_SHAPES.forEach(function (d) {
-      var p = document.createElementNS(NS, 'path');
-      p.setAttribute('d', d);
-      g.appendChild(p);
-    });
-    svg.appendChild(g);
-    return svg;
-  }
-  function faceJet(svg, faceRight) {
-    var g = svg && svg.querySelector('g');
-    if (!g) return;
-    if (faceRight) g.setAttribute('transform', 'translate(120 0) scale(-1 1)');
-    else g.removeAttribute('transform');
-  }
-
-  /* ---------------- the flight curtain ---------------- */
-  function buildCurtain() {
-    var c = make('div', 'curtain');
-    c.setAttribute('aria-hidden', 'true');
-    var lead = make('div', 'curtain-panel curtain-panel--lead');
-    var main = make('div', 'curtain-panel curtain-panel--main');
-    main.appendChild(make('span', 'curtain-edge'));
-    main.appendChild(jetSvg('curtain-jet'));
-    main.appendChild(make('span', 'curtain-contrail curtain-contrail--a'));
-    main.appendChild(make('span', 'curtain-contrail curtain-contrail--b'));
-    var label = make('div', 'curtain-label');
-    motion.curtainNum = make('span', 'curtain-num', '01');
-    motion.curtainTitle = make('span', 'curtain-title', '');
-    label.appendChild(motion.curtainNum);
-    label.appendChild(motion.curtainTitle);
-    main.appendChild(label);
-    c.appendChild(lead);
-    c.appendChild(main);
-    el.stage.appendChild(c);
-    motion.curtain = c;
-  }
-
-  // The chapter number and title flown in on the curtain.
-  function curtainMeta(id) {
-    if (id === 'attract') return ['—', C.meta.title || 'History'];
-    if (id === 'home') return ['00', 'Hall of Fame'];
-    if (id === 'chief') return ['02', chiefByNo(state.chief).shortName];
-    var sec = SECTIONS[id];
-    if (!sec) return ['—', C.meta.title || 'History'];
-    return [sec.n || '—', sec.nav || sec.name];
-  }
-
-  function panelAnim(node, frames, opts) {
-    if (!node || !node.animate) return null;
-    try { return node.animate(frames, opts); } catch (e) { return null; }
-  }
-
-  function curtainNavigate(id) {
-    var c = motion.curtain;
-    var meta = curtainMeta(id);
-    var lead = c.querySelector('.curtain-panel--lead');
-    var main = c.querySelector('.curtain-panel--main');
-    var label = c.querySelector('.curtain-label');
-    var curve = 'cubic-bezier(0.76, 0, 0.24, 1)';
-
-    motion.busy = true;
-    motion.curtainNum.textContent = meta[0];
-    motion.curtainTitle.textContent = meta[1];
-    c.classList.add('is-active');
-
-    var coverLead = panelAnim(lead, [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
-      { duration: 460, easing: curve, fill: 'both' });
-    var coverMain = panelAnim(main, [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
-      { duration: 520, delay: 50, easing: curve, fill: 'both' });
-    var labelIn = panelAnim(label, [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'translateY(0)' }],
-      { duration: 300, delay: 280, easing: 'ease-out', fill: 'both' });
-
+  function showCurtain(section, onCovered) {
+    var crest = 'assets/icons/naf.png';
+    var layer = document.createElement('div');
+    layer.className = 'curtain is-in';
+    layer.innerHTML =
+      '<div class="curtain-lead"></div>' +
+      '<div class="curtain-main">' +
+      '<span class="curtain-bar"></span>' +
+      '<svg class="curtain-jet" viewBox="0 0 200 80" aria-hidden="true"><path d="M4 44l52-10 30-26 12 2-14 24 44-6 26-14 10 3-12 17 26-2 6 6-6 6-26-2 12 17-10 3-26-14-44-6 14 24-12 2-30-26-52-10z"/></svg>' +
+      '<span class="curtain-contrail curtain-contrail--a"></span>' +
+      '<span class="curtain-contrail curtain-contrail--b"></span>' +
+      '<div class="curtain-inner">' +
+      '<img class="curtain-crest" src="' + crest + '" alt="" onerror="this.style.display=\'none\'" />' +
+      '<div class="curtain-body">' +
+      '<span class="curtain-n">' + esc(section.key === 'welcome' ? 'Gallery 01 · Welcome' : 'Gallery ' + section.no + ' · ' + section.title) + '</span>' +
+      '<span class="curtain-title">' + esc(section.key === 'welcome' ? 'The History Experience' : section.title) + '</span>' +
+      '</div></div></div>';
+    dom.stage.appendChild(layer);
+    setTimeout(function () { if (onCovered) onCovered(); }, 520);
     setTimeout(function () {
-      renderScreen();
-      // Hold the new screen's entrance until the curtain is on its way out.
-      if (motion.screens) motion.screens.classList.add('motion-hold');
-
-      var revealLead = panelAnim(lead, [{ transform: 'translateX(0)' }, { transform: 'translateX(-101%)' }],
-        { duration: 600, delay: 100, easing: curve, fill: 'both' });
-      var revealMain = panelAnim(main, [{ transform: 'translateX(0)' }, { transform: 'translateX(-101%)' }],
-        { duration: 620, easing: curve, fill: 'both' });
-      var labelOut = panelAnim(label, [{ opacity: 1 }, { opacity: 0 }],
-        { duration: 240, easing: 'ease-in', fill: 'both' });
-      [coverLead, coverMain, labelIn].forEach(function (a) { if (a) a.cancel(); });
-
-      var release = function () { if (motion.screens) motion.screens.classList.remove('motion-hold'); };
-      if (window.requestAnimationFrame) requestAnimationFrame(function () { requestAnimationFrame(release); });
-      setTimeout(release, 180);
-
-      setTimeout(function () {
-        c.classList.remove('is-active');
-        [revealLead, revealMain, labelOut].forEach(function (a) { if (a) a.cancel(); });
-        motion.busy = false;
-      }, MOTION_REVEAL_MS);
-    }, MOTION_COVER_MS);
+      layer.classList.remove('is-in');
+      layer.classList.add('is-out');
+    }, 560);
+    setTimeout(function () { layer.remove(); }, 1240);
   }
 
-  /* ---------------- rendering, through the curtain ---------------- */
-  function renderScreen() {
-    stopWelcomeFlights();
-    showScreen();
-    motion.current = state.screen;
-    if (state.screen === 'attract') startFlights();
-    var sel = REVEAL_SELECTORS[state.screen];
-    if (sel) revealIn(el.screens[state.screen], sel);
+  function enterTimeline(era, year) {
+    var explorer = byId('era-explorer');
+    var target = hashFor('naf', { era: era, year: year });
+    if (!explorer) { navigate(target); return; }
+    explorer.classList.add('is-collapsing');
+    state.skipCurtain = true;
+    setTimeout(function () { navigate(target); }, 280);
   }
 
-  // Every screen change goes through the curtain; a step inside a screen
-  // (a decade, a year, the next Chief) and the reduced-motion mode do not.
-  function show() {
-    var target = state.screen;
-    if (!motion.reduced && motion.curtain && !motion.busy && target !== motion.current) curtainNavigate(target);
-    else renderScreen();
+  /* ============================================================
+     router
+     ============================================================ */
+
+  function parseHash() {
+    var raw = location.hash || '#/welcome';
+    var s = raw.replace(/^#\/?/, '');
+    var qi = s.indexOf('?');
+    var name = (qi >= 0 ? s.slice(0, qi) : s).replace(/\/+$/, '') || 'welcome';
+    var params = {};
+    if (qi >= 0) {
+      s.slice(qi + 1).split('&').forEach(function (pair) {
+        if (!pair) return;
+        var eq = pair.indexOf('=');
+        var k = eq >= 0 ? pair.slice(0, eq) : pair;
+        var v = eq >= 0 ? pair.slice(eq + 1) : '';
+        try { params[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); } catch (e) { params[k] = v; }
+      });
+    }
+    return { name: name, params: params };
   }
 
-  /* ---------------- the jet that taxis along the top bar ---------------- */
-  function buildChapterJet() {
-    motion.jet = jetSvg('chapter-jet', true);
-    el.chapters.appendChild(motion.jet);
-  }
-  function positionTabJet(section) {
-    var jet = motion.jet;
-    if (!jet) return;
-    var tab = el.chapters.querySelector('[data-arg="' + section + '"]');
-    if (!tab || !tab.offsetWidth) { jet.classList.remove('is-on'); return; }
-    var x = Math.round(tab.offsetLeft + tab.offsetWidth / 2 - 17);
-    faceJet(jet, motion.tabX === null ? true : x >= motion.tabX);
-    motion.tabX = x;
-    jet.style.transform = 'translateX(' + x + 'px)';
-    jet.classList.add('is-on');
+  function hashFor(name, params) {
+    var bits = [];
+    Object.keys(params || {}).forEach(function (k) {
+      if (params[k] === null || params[k] === undefined || params[k] === '') return;
+      bits.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k])));
+    });
+    return '#/' + name + (bits.length ? '?' + bits.join('&') : '');
   }
 
-  /* ---------------- reveals as lists scroll into view ---------------- */
-  function revealIn(root, selector) {
-    if (!root || motion.reduced) return;
-    var nodes = root.querySelectorAll(selector);
-    if (!nodes.length) return;
-    var box = root.querySelector('[data-scroll="y"]') || root.querySelector('[data-scroll="x"]');
-    function markAll() { Array.prototype.forEach.call(nodes, function (n) { n.classList.add('is-in'); }); }
-    Array.prototype.forEach.call(nodes, function (n) { n.classList.add('is-reveal'); });
-    if (!('IntersectionObserver' in window) || (box && !box.clientHeight)) { markAll(); return; }
-    if (motion.observer) motion.observer.disconnect();
-    motion.observer = new IntersectionObserver(function (entries) {
+  function navigate(hash, opts) {
+    opts = opts || {};
+    if (!opts.replace && location.hash !== hash) state.stack.push(location.hash || '#/welcome');
+    if (location.hash === hash) render();
+    else location.hash = hash;
+  }
+
+  function goBack() {
+    var target = state.stack.pop();
+    if (!target || target === location.hash) target = '#/history';
+    navigate(target, { replace: true });
+  }
+
+  /* ============================================================
+     view helpers
+     ============================================================ */
+
+  function masthead(eyebrow, title, blurb) {
+    return '<div class="masthead">' +
+      (eyebrow ? '<span class="eyebrow">' + esc(eyebrow) + '</span>' : '') +
+      '<h2>' + esc(title) + '</h2>' +
+      (blurb ? '<p>' + esc(blurb) + '</p>' : '') +
+      '</div>';
+  }
+
+  function revealAll(root) {
+    var items = qsa('.reveal', root);
+    if (!items.length) return;
+    if (!('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.classList.add('is-in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-in');
-        motion.observer.unobserve(entry.target);
+        var el = entry.target;
+        var delay = +(el.dataset.delay || 0);
+        setTimeout(function () { el.classList.add('is-in'); }, delay);
+        io.unobserve(el);
       });
-    }, { root: box || null, rootMargin: '0px 0px -4% 0px', threshold: 0.04 });
-    Array.prototype.forEach.call(nodes, function (n) { motion.observer.observe(n); });
-    // If the observer never reports (an occluded or throttled window), anything
-    // already on screen is shown rather than left blank.
-    setTimeout(function () {
-      var host = box ? box.getBoundingClientRect() : { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth };
-      Array.prototype.forEach.call(nodes, function (n) {
-        if (n.classList.contains('is-in')) return;
-        var r = n.getBoundingClientRect();
-        if (r.bottom > host.top && r.top < host.bottom && r.right > host.left && r.left < host.right) n.classList.add('is-in');
-      });
-    }, 1200);
+    }, { root: root, rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    items.forEach(function (el) { io.observe(el); });
   }
 
-  /* ---------------- welcome: radar, flight paths, flypasts ---------------- */
-  function radarMarkup() {
-    var rings = [170, 270, 390, 530].map(function (r, i) {
-      return '<circle class="radar-ring" cx="0" cy="0" r="' + r + '" pathLength="1" style="animation-delay:' +
-        (0.15 + i * 0.16).toFixed(2) + 's;stroke-opacity:' + (0.2 - i * 0.03).toFixed(3) + '"></circle>';
+  /* ============================================================
+     VIEW — welcome
+     ============================================================ */
+
+  function viewWelcome() {
+    var intro = filmById('intro') || FILMS[0] || {};
+    var nav = SECTIONS.map(function (s, i) {
+      return (i ? '<span class="welcome-nav-dot"></span>' : '') +
+        '<button class="welcome-nav-item" data-act="go" data-route="' + s.route + '">' + esc(s.short) + '</button>';
     }).join('');
-    var ticks = '';
-    for (var d = 0; d < 360; d += 5) {
-      var outer = d % 30 === 0 ? 575 : 562;
-      ticks += '<line x1="0" y1="-552" x2="0" y2="-' + outer + '" transform="rotate(' + d + ')" stroke-opacity="' +
-        (d % 30 === 0 ? 0.34 : 0.16) + '"' + (d % 90 === 0 ? ' stroke="var(--gold)"' : '') + '></line>';
-    }
-    return '<svg viewBox="-600 -600 1200 1200" aria-hidden="true">' + rings +
-      '<g class="radar-ticks">' + ticks + '</g>' +
-      '<line class="radar-axis" x1="-600" y1="0" x2="600" y2="0"></line>' +
-      '<line class="radar-axis" x1="0" y1="-600" x2="0" y2="600"></line>' +
+
+    var paths =
+      '<svg class="welcome-paths" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="M -60 940 C 420 800 760 1010 1160 890 S 1720 690 1990 760" stroke="var(--olive)" stroke-opacity="0.45" />' +
+      '<path d="M -60 300 C 260 220 520 360 860 250" stroke="var(--aviation)" stroke-opacity="0.4" />' +
+      '<path d="M 1100 1010 C 1350 900 1600 980 1990 860" stroke="var(--aviation)" stroke-opacity="0.4" />' +
       '</svg>';
+
+    var jet = '<svg class="welcome-jet" viewBox="0 0 200 80" aria-hidden="true">' +
+      '<path fill="var(--brass)" d="M4 44l52-10 30-26 12 2-14 24 44-6 26-14 10 3-12 17 26-2 6 6-6 6-26-2 12 17-10 3-26-14-44-6 14 24-12 2-30-26-52-10z" />' +
+      '</svg>';
+
+    var html = '<div class="screen-inner welcome">' +
+      '<div class="welcome-grain"></div>' +
+      '<div class="welcome-orb welcome-orb--l"></div>' +
+      '<div class="welcome-orb welcome-orb--r"></div>' +
+      '<div class="welcome-radar"></div>' +
+      paths + jet +
+      '<div class="welcome-corner welcome-corner--tl">' +
+      '<span class="welcome-corner-n">01</span><span class="welcome-corner-rule"></span>' +
+      '<span class="welcome-corner-title">Welcome</span></div>' +
+      '<div class="welcome-corner welcome-corner--tr">' +
+      '<button class="btn btn--paper" data-act="exit-app">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Close</button></div>' +
+      '<div class="welcome-corner welcome-corner--bl">' +
+      '<span class="welcome-corner-kicker">Jaji · Kaduna State · Nigeria</span>' +
+      '<span class="welcome-corner-value">10°49′N · 007°35′E</span></div>' +
+      '<div class="welcome-corner welcome-corner--br">' +
+      '<span class="welcome-corner-kicker">Air Faculty established</span>' +
+      '<span class="welcome-corner-value">26 February 1979</span></div>' +
+      '<div class="welcome-body">' +
+      '<div class="welcome-crest-wrap">' +
+      '<svg class="welcome-rings" viewBox="0 0 200 200" aria-hidden="true">' +
+      '<circle cx="100" cy="100" r="96" stroke-width="0.8" />' +
+      '<circle cx="100" cy="100" r="88" stroke-width="0.5" stroke-dasharray="1 4" stroke-opacity="0.45" />' +
+      '</svg>' +
+      '<img class="welcome-crest" src="assets/icons/naf.png" alt="Nigerian Air Force crest" onerror="this.style.display=\'none\'" />' +
+      '</div>' +
+      '<p class="welcome-host">Armed Forces Command and Staff College, Jaji</p>' +
+      '<div class="welcome-dept"><i></i>Department of Air Warfare<i></i></div>' +
+      '<h1 class="welcome-title"><em>The</em> Hall of Fame</h1>' +
+      '<p class="welcome-lede">' + esc((C.meta && C.meta.tagline) || 'Six decades of Nigerian airpower.') + '</p>' +
+      '<div class="welcome-actions">' +
+      '<button class="welcome-enter" data-act="go" data-route="#/history">Enter Experience' +
+      '<span class="arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span></button>' +
+      (intro.src ? '<button class="btn btn--glass" data-act="film" data-id="' + esc(intro.id) + '" style="color:var(--navy);border-color:color-mix(in oklab,var(--navy) 24%,transparent);background:color-mix(in oklab,var(--paper) 70%,transparent)">Watch the introduction</button>' : '') +
+      '</div>' +
+      '<nav class="welcome-nav" aria-label="Go straight to a gallery">' + nav + '</nav>' +
+      '<div class="welcome-stats">' +
+      '<span class="welcome-stat"><b>' + DECADES.length + '</b>decades</span>' +
+      '<span class="welcome-stat"><b>' + CHIEFS.length + '</b>chiefs</span>' +
+      '<span class="welcome-stat"><b>' + EVENTS.length + '</b>moments</span>' +
+      '<span class="welcome-stat"><b>' + FILMS.length + '</b>films</span>' +
+      '</div>' +
+      '</div></div>';
+
+    return { html: html, after: function () {} };
   }
 
-  // Dotted lines are revealed through a drawn mask, so the dot pattern survives the animation.
-  function decorMarkup() {
-    var defs = '', lines = '';
-    DECOR_PATHS.forEach(function (d, i) {
-      var id = 'hof-decor-' + i;
-      defs += '<mask id="' + id + '" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080">' +
-        '<path class="decor-reveal" pathLength="1" d="' + d + '" style="animation-delay:' + (0.5 + i * 0.3).toFixed(2) + 's"></path></mask>';
-      lines += '<path class="decor-line" d="' + d + '" mask="url(#' + id + ')" stroke="' +
-        (i === 0 ? 'var(--gold-bright)' : 'var(--ivory)') + '"></path>';
-    });
-    return '<svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>' + defs + '</defs>' + lines + '</svg>';
-  }
+  /* ============================================================
+     VIEW — history
+     ============================================================ */
 
-  var flightSeq = 0;
-  function buildFlight(cls) {
-    var NS = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', '0 0 1920 1080');
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-    svg.setAttribute('class', 'flight-layer ' + cls);
-    svg.setAttribute('aria-hidden', 'true');
-    var id = 'hof-flight-' + (++flightSeq);
-    var defs = document.createElementNS(NS, 'defs');
-    var mask = document.createElementNS(NS, 'mask');
-    mask.setAttribute('id', id);
-    mask.setAttribute('maskUnits', 'userSpaceOnUse');
-    mask.setAttribute('x', '0');
-    mask.setAttribute('y', '0');
-    mask.setAttribute('width', '1920');
-    mask.setAttribute('height', '1080');
-    var maskPath = document.createElementNS(NS, 'path');
-    maskPath.setAttribute('fill', 'none');
-    maskPath.setAttribute('stroke', '#fff');
-    maskPath.setAttribute('stroke-width', '14');
-    mask.appendChild(maskPath);
-    defs.appendChild(mask);
-    svg.appendChild(defs);
+  var ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 
-    var guide = document.createElementNS(NS, 'path');
-    guide.setAttribute('fill', 'none');
-    guide.setAttribute('stroke', 'none');
-    svg.appendChild(guide);
+  function viewHistory(params) {
+    var start = parseInt(params && params.chapter, 10);
+    if (!isNaN(start)) state.chapter = Math.max(0, Math.min(DECADES.length - 1, start));
+    var cards = DECADES.map(function (d, i) {
+      var evs = eventsIn(d.from, d.to);
+      var chips = evs.slice(0, 4).map(function (ev) {
+        return '<button class="moment-chip" data-act="moment" data-era="' + i + '" data-year="' + ev.year + '">' +
+          '<span class="d">' + esc(ev.date || ev.year) + '</span>' +
+          '<span class="m">' + esc(ev.title) + '</span></button>';
+      }).join('');
+      return '<article class="chapter-card" data-act="chapter" data-index="' + i + '" role="button" tabindex="0">' +
+        '<div class="chapter-flip">' +
+        '<div class="chapter-face chapter-face--front">' +
+        '<button class="chapter-photo" data-act="lightbox-era" data-era="' + i + '" aria-label="Photographs of ' + esc(d.title) + '">' +
+        imgTag(evs.length ? photoOf(evs[0]) : FALLBACK_PHOTO, d.title) + '</button>' +
+        '<div class="chapter-info">' +
+        '<span class="chapter-range">' + d.from + ' — ' + d.to + '</span>' +
+        '<h3 class="chapter-title">' + esc(d.title) + '</h3>' +
+        '<p class="chapter-summary">' + esc(d.summary) + '</p>' +
+        '<div class="chapter-moments">' + chips + '</div>' +
+        '<button class="chapter-go" data-act="era-more" data-era="' + i + '" data-year="' + (evs.length ? evs[0].year : d.from) + '">' +
+        'Open this era on the timeline' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>' +
+        '</div></div>' +
+        '<div class="chapter-face chapter-face--back">' +
+        '<span class="chapter-back-num">' + ROMAN[i] + '</span>' +
+        '<span class="chapter-back-title">' + esc(d.title) + '</span>' +
+        '<span class="chapter-back-range">' + d.from + ' — ' + d.to + '</span>' +
+        '</div></div></article>';
+    }).join('');
 
-    var trail = document.createElementNS(NS, 'path');
-    trail.setAttribute('class', 'flight-trail');
-    trail.setAttribute('fill', 'none');
-    trail.setAttribute('mask', 'url(#' + id + ')');
-    svg.appendChild(trail);
-
-    var plane = document.createElementNS(NS, 'g');
-    plane.setAttribute('class', 'flight-jet');
-    JET_SHAPES.forEach(function (d) {
-      var p = document.createElementNS(NS, 'path');
-      p.setAttribute('d', d);
-      plane.appendChild(p);
-    });
-    svg.appendChild(plane);
-
-    return { svg: svg, guide: guide, maskPath: maskPath, trail: trail, plane: plane, raf: null, timer: null, stopped: true };
-  }
-
-  function flyPass(f, opts) {
-    if (!f || f.stopped) return;
-    f.guide.setAttribute('d', opts.path);
-    f.maskPath.setAttribute('d', opts.path);
-    f.trail.setAttribute('d', opts.path);
-    var L = f.guide.getTotalLength();
-    var ms = opts.duration * 1000;
-    var scale = opts.scale || [1.2, 1.6];
-    var started = null;
-    f.maskPath.style.strokeDasharray = String(L);
-    f.maskPath.style.strokeDashoffset = String(L);
-    f.plane.style.opacity = '1';
-    f.trail.style.opacity = '0.85';
-
-    function frame(now) {
-      if (f.stopped) return;
-      if (started === null) started = now;
-      var k = Math.min(1, (now - started) / ms);
-      var eased = k * k * (3 - 2 * k);
-      var at = eased * L;
-      var a = f.guide.getPointAtLength(at);
-      var b = f.guide.getPointAtLength(Math.min(L, at + 2));
-      var c = at + 2 > L ? f.guide.getPointAtLength(Math.max(0, at - 2)) : a;
-      var ang = Math.atan2(b.y - c.y, b.x - c.x) * 180 / Math.PI;
-      var s = scale[0] + (scale[1] - scale[0]) * Math.sin(Math.PI * k);
-      // The silhouette is drawn nose-left, so it turns through 180 degrees to face its travel.
-      f.plane.setAttribute('transform', 'translate(' + a.x + ' ' + a.y + ') rotate(' + (ang + 180) + ') scale(' + s + ')');
-      f.maskPath.style.strokeDashoffset = String(L * (1 - eased));
-      if (k < 1) { f.raf = requestAnimationFrame(frame); return; }
-      f.raf = null;
-      f.plane.style.opacity = '0';
-      f.trail.style.opacity = '0';
-      if (opts.repeat) f.timer = setTimeout(function () { flyPass(f, opts); }, opts.repeat * 1000);
-    }
-    f.raf = requestAnimationFrame(frame);
-  }
-
-  function stopFlight(f) {
-    if (!f) return;
-    f.stopped = true;
-    if (f.raf) cancelAnimationFrame(f.raf);
-    f.raf = null;
-    if (f.timer) clearTimeout(f.timer);
-    f.timer = null;
-    f.plane.style.opacity = '0';
-    f.trail.style.opacity = '0';
-  }
-  function stopWelcomeFlights() {
-    stopFlight(motion.intro);
-    stopFlight(motion.ambient);
-  }
-  function startFlights() {
-    stopWelcomeFlights();
-    if (motion.reduced || !motion.intro || !motion.ambient) return;
-    motion.intro.stopped = false;
-    motion.ambient.stopped = false;
-    motion.intro.timer = setTimeout(function () {
-      flyPass(motion.intro, { path: FLIGHT_INTRO, duration: 3.1, scale: [3.2, 4.4] });
-    }, 350);
-    motion.ambient.timer = setTimeout(function () {
-      if (motion.ambient.stopped) return;
-      flyPass(motion.ambient, { path: FLIGHT_AMBIENT, duration: 11, scale: [1.3, 1.9], repeat: 16 });
-    }, 9000);
-  }
-
-  function buildWelcomeMotion(root) {
-    var host = root.querySelector('.attract');
-    if (!host || motion.reduced) return;
-
-    var radar = make('div', 'radar-field');
-    radar.setAttribute('aria-hidden', 'true');
-    radar.innerHTML = '<div class="radar-sweep"></div>' + radarMarkup();
-    host.appendChild(radar);
-
-    var decor = make('div', 'decor-paths');
-    decor.setAttribute('aria-hidden', 'true');
-    decor.innerHTML = decorMarkup();
-    host.appendChild(decor);
-
-    var crests = host.querySelector('.attract-crests');
-    if (crests) {
-      var glint = make('span', 'glint-layer');
-      glint.setAttribute('aria-hidden', 'true');
-      crests.appendChild(glint);
-    }
-
-    motion.intro = buildFlight('flight-front');
-    motion.ambient = buildFlight('flight-behind');
-    host.appendChild(motion.ambient.svg);
-    host.appendChild(motion.intro.svg);
-  }
-
-  /* ---------------- the ruler and the line of succession ---------------- */
-  function markRulerYear(root) {
-    if (!root || motion.reduced) return;
-    var on = root.querySelector('.sky-year.is-on');
-    if (on) on.appendChild(jetSvg('sky-jet'));
-  }
-
-  // A jet runs the length of the lineage and comes to rest at the present day.
-  function sweepLineage(root) {
-    if (!root || motion.reduced) return;
-    var line = root.querySelector('.lineage');
-    if (!line) return;
-    var bar = line.querySelector('.lineage-bar');
-    var jet = jetSvg('lineage-jet', true);
-    line.appendChild(jet);
-    var end = Math.max(0, (bar ? bar.offsetWidth : 0) - 44);
-    var rest = function () {
-      jet.style.transform = 'translateX(' + end + 'px)';
-      jet.style.opacity = '0.95';
-      jet.classList.add('is-on');
+    return {
+      html: '<div class="screen-inner history">' +
+        '<header class="page-head">' +
+        masthead('The story of the service', 'A history in six chapters',
+          'Turn a card to read its chapter, then touch a moment to find it on the timeline.') +
+        '<div class="head-tools"><img class="head-crest" src="assets/icons/naf.png" alt="Nigerian Air Force crest" onerror="this.style.display=\'none\'" /></div>' +
+        '</header>' +
+        '<div class="chapter-deck" id="chapter-deck">' + cards + '</div>' +
+        '</div>',
+      after: function () {
+        if (state.chapter >= DECADES.length) state.chapter = 0;
+        layoutDeck();
+      }
     };
-    if (!jet.animate || !end) { rest(); return; }
-    var anim = jet.animate(
-      [{ transform: 'translateX(0)', opacity: 0.2 }, { transform: 'translateX(' + end + 'px)', opacity: 1 }],
-      { duration: 2400, easing: 'cubic-bezier(0.33, 1, 0.68, 1)', fill: 'both' }
-    );
-    anim.onfinish = function () { anim.cancel(); rest(); };
   }
 
-  /* ---------------- standby before returning to the welcome screen ---------------- */
-  function buildStandby() {
-    var card = el.idle && el.idle.querySelector('.idle-card');
-    if (!card) return;
-    var crest = document.createElement('img');
-    crest.className = 'idle-crest';
-    crest.src = 'assets/icons/afcsc.png';
-    crest.alt = '';
-    crest.setAttribute('aria-hidden', 'true');
-    var rings = make('div', 'idle-rings');
-    rings.setAttribute('aria-hidden', 'true');
-    rings.appendChild(jetSvg('idle-jet'));
-    var rule = make('span', 'idle-rule');
-    rule.setAttribute('aria-hidden', 'true');
-    var sub = card.querySelector('.idle-sub');
-    card.insertBefore(crest, card.firstChild);
-    card.insertBefore(rings, sub);
-    card.insertBefore(rule, sub);
-  }
+  function layoutDeck() {
+    var deck = byId('chapter-deck');
+    if (!deck) return;
+    var cards = qsa('.chapter-card', deck);
+    if (!cards.length) return;
 
-  function buildMotion() {
-    motion.screens = $('screens');
-    buildCurtain();
-    buildChapterJet();
-    buildStandby();
-    positionTabJet(state.screen === 'chief' ? 'chiefs' : state.screen);
-  }
+    var W = deck.clientWidth;
+    var n = cards.length;
+    var active = Math.max(0, Math.min(n - 1, state.chapter || 0));
+    var gap = 34;
+    var backW = Math.round(Math.min(196, Math.max(148, (W * 0.62) / n)));
+    var overlap = Math.round(backW * 0.4);
+    var leftCount = active;
+    var rightCount = n - 1 - active;
+    var leftTotal = leftCount ? leftCount * backW - (leftCount - 1) * overlap : 0;
+    var rightTotal = rightCount ? rightCount * backW - (rightCount - 1) * overlap : 0;
+    var gaps = (leftCount ? gap : 0) + (rightCount ? gap : 0);
+    var activeW = Math.max(540, Math.min(780, W - 40 - leftTotal - rightTotal - gaps));
+    var total = leftTotal + rightTotal + activeW + gaps;
+    var startX = Math.max(0, (W - total) / 2);
+    var activeX = startX + (leftCount ? leftTotal + gap : 0);
 
-  // ============================================================
-  // Init
-  // ============================================================
-  function init() {
-    el.stage = $('stage');
-    el.topbar = $('topbar');
-    el.chapters = $('chapters');
-    el.back = $('btn-back');
-    el.sound = $('btn-sound');
-    el.lightbox = $('lightbox');
-    el.player = $('player');
-    el.video = $('player-video');
-    el.idle = $('idle');
-    el.screens = {};
-    document.querySelectorAll('.screen').forEach(function (s) { el.screens[s.id.replace('screen-', '')] = s; });
+    var activeCard = cards[active];
+    activeCard.style.left = Math.round(activeX) + 'px';
+    activeCard.style.width = Math.round(activeW) + 'px';
 
-    // Any image that fails to load (e.g. media not copied yet) falls back to its frame's placeholder.
-    document.addEventListener('error', function (e) {
-      if (e.target && e.target.tagName === 'IMG') e.target.classList.add('missing');
-    }, true);
+    for (var j = active - 1, k = 0; j >= 0; j--, k++) {
+      var card = cards[j];
+      var left = activeX - gap - backW - k * (backW - overlap);
+      card.style.left = Math.round(left) + 'px';
+      card.style.width = backW + 'px';
+      card.classList.add('is-left');
+      card.classList.remove('is-right');
+      card.style.zIndex = 30 - k;
+    }
 
-    el.stage.addEventListener('click', onClick);
-    el.stage.addEventListener('pointerdown', touched, true);
-    document.addEventListener('keydown', function (e) {
-      touched();
-      if (e.key === 'Escape') { if (film) closeFilm(); else if (!el.lightbox.classList.contains('hidden')) closeLightbox(); else if (state.screen !== 'attract') goBack(); }
-      if (!el.lightbox.classList.contains('hidden')) { if (e.key === 'ArrowRight') stepLightbox(1); if (e.key === 'ArrowLeft') stepLightbox(-1); }
+    for (var i = active + 1, r = 0; i < n; i++, r++) {
+      var rcard = cards[i];
+      rcard.style.left = Math.round(activeX + activeW + gap + r * (backW - overlap)) + 'px';
+      rcard.style.width = backW + 'px';
+      rcard.classList.add('is-right');
+      rcard.classList.remove('is-left');
+      rcard.style.zIndex = 30 - r;
+    }
+
+    activeCard.classList.remove('is-left', 'is-right');
+    activeCard.style.zIndex = 40;
+    cards.forEach(function (card, i) {
+      card.classList.toggle('is-on', i === active);
     });
-    document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-
-    window.addEventListener('resize', scaleStage);
-    scaleStage();
-    initPlayer();
-    initLightboxSwipe();
-    initAmbient();
-    probeFilms();
-    buildMotion();
-    setInterval(idleTick, 1000);
-    show();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  function activateChapter(index) {
+    if (index === state.chapter) return;
+    state.chapter = index;
+    layoutDeck();
+  }
+
+  /* ============================================================
+     VIEW — Nigerian Air Force (eras + timeline)
+     ============================================================ */
+
+  function eraEvents(index) {
+    var d = DECADES[index];
+    if (!d) return [];
+    return eventsIn(d.from, d.to);
+  }
+
+  function yearsOfEra(index) {
+    var map = {};
+    var order = [];
+    eraEvents(index).forEach(function (ev) {
+      if (!map[ev.year]) { map[ev.year] = []; order.push(ev.year); }
+      map[ev.year].push(ev);
+    });
+    order.sort(function (a, b) { return a - b; });
+    return order.map(function (y) { return { year: y, events: map[y] }; });
+  }
+
+  function viewNaf(params) {
+    var era = Math.max(0, Math.min(DECADES.length - 1, parseInt(params.era, 10) || 0));
+    state.era = era;
+    var year = parseInt(params.year, 10) || null;
+
+    var html = '<div class="screen-inner naf">' +
+      '<header class="page-head naf-head">' +
+      masthead('Nigerian Air Force · 1964 to today', 'Nigerian Air Force',
+        'Six decades, opened like a folder. Choose an era to read its brief, or open the full timeline and move through the years.') +
+      '<div class="head-tools">' +
+      '<div class="naf-toggle">' +
+      '<button data-act="naf-mode" data-mode="eras" class="' + (year ? '' : 'is-on') + '">Eras</button>' +
+      '<button data-act="naf-mode" data-mode="timeline" class="' + (year ? 'is-on' : '') + '">Timeline</button>' +
+      '</div>' +
+      '<img class="head-crest" src="assets/icons/naf.png" alt="Nigerian Air Force crest" onerror="this.style.display=\'none\'" />' +
+      '</div></header>';
+
+    if (year) {
+      var erev = eraEvents(era);
+      var startIdx = 0;
+      for (var j = 0; j < erev.length; j++) if (erev[j].year === year) { startIdx = j; break; }
+      state.year = year;
+      state.moment = startIdx;
+      html += '<div class="era-strip" id="era-strip">' + eraStrip(era) + '</div>';
+      html += '<div class="naf-timeline" id="naf-timeline"></div>';
+    } else {
+      state.year = null;
+      html += '<div class="era-explorer" id="era-explorer">' + eraColumns(era) + '</div>';
+    }
+    html += '</div>';
+
+    return {
+      html: html,
+      after: function () {
+        if (year) paintTimeline();
+        else bindEraExplorer();
+      }
+    };
+  }
+
+  function eraColumns(active) {
+    return DECADES.map(function (d, i) {
+      var evs = eraEvents(i);
+      var cover = evs.length ? photoOf(evs[0]) : FALLBACK_PHOTO;
+      var first = evs.length ? evs[0].year : d.from;
+      return '<div class="era-col' + (i === active ? ' is-on' : '') + '" role="button" tabindex="0" data-act="era-select" data-era="' + i + '">' +
+        '<div class="era-col-bg">' + imgTag(cover, d.title) + '</div>' +
+        '<div class="era-rail">' +
+        '<span class="era-rail-range">' + d.from + '–' + d.to + '</span>' +
+        '<span class="era-rail-title">' + esc(d.title) + '</span>' +
+        '<span class="era-rail-num">' + ROMAN[i] + '</span>' +
+        '</div>' +
+        '<div class="era-open">' +
+        '<span class="era-open-num">Era ' + ROMAN[i] + '</span>' +
+        '<h3>' + esc(d.title) + '</h3>' +
+        '<p>' + esc(d.summary) + '</p>' +
+        '<div class="era-open-facts">' +
+        '<span class="era-fact"><b>' + evs.length + '</b><span>Moments</span></span>' +
+        '<span class="era-fact"><b>' + d.from + '–' + d.to + '</b><span>Years</span></span>' +
+        '<span class="era-fact"><b>' + (evs.length ? evs[0].year : d.from) + '</b><span>First record</span></span>' +
+        '</div>' +
+        '<div class="era-open-actions">' +
+        '<button class="btn btn--brass" data-act="era-more" data-era="' + i + '" data-year="' + first + '">More info' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>' +
+        '</div></div></div>';
+    }).join('');
+  }
+
+  function eraStrip(active) {
+    return DECADES.map(function (d, i) {
+      return '<button class="era-chip' + (i === active ? ' is-on' : '') + '" data-act="era-jump" data-era="' + i + '">' +
+        '<b>' + ROMAN[i] + '</b>' +
+        '<span class="era-chip-range">' + d.from + '–' + d.to + '</span>' +
+        '<span class="era-chip-title">' + esc(d.title) + '</span></button>';
+    }).join('');
+  }
+
+  function bindEraExplorer() {
+    var cols = qsa('.era-col');
+    cols.forEach(function (col) {
+      col.addEventListener('pointerenter', function () {
+        if (window.matchMedia('(hover: hover)').matches) selectEra(+col.dataset.era);
+      });
+    });
+    selectEra(state.era);
+  }
+
+  function selectEra(index) {
+    state.era = index;
+    qsa('.era-col').forEach(function (col) {
+      col.classList.toggle('is-on', +col.dataset.era === index);
+    });
+  }
+
+  function timelineMomentFor(year) {
+    var list = eraEvents(state.era);
+    var idx = 0;
+    for (var i = 0; i < list.length; i++) if (list[i].year === year) { idx = i; break; }
+    return { list: list, index: idx };
+  }
+
+  function paintTimeline() {
+    var host = byId('naf-timeline');
+    if (!host) return;
+    var list = eraEvents(state.era);
+    if (!list.length) { host.innerHTML = ''; return; }
+    var index = state.moment || 0;
+    if (index < 0) index = list.length - 1;
+    if (index >= list.length) index = 0;
+    var ev = list[index];
+    state.moment = index;
+    state.year = ev.year;
+
+    var d = DECADES[state.era] || {};
+    var years = yearsOfEra(state.era);
+    var next = list[(index + 1) % list.length];
+    var film = filmForYear(ev.year) || (state.era >= 4 ? filmById('sixty') : filmById('birth'));
+
+    var neighbours = [list[index + 1], list[index + 2], list[index - 1]].filter(Boolean);
+    var stack = '<div class="print-frame naf-print naf-print--a"><div class="photo photo--plain">' + imgTag(photoOf(ev), ev.title) + '</div></div>';
+    if (neighbours[0]) {
+      stack += '<div class="print-frame naf-print naf-print--b"><div class="photo photo--plain">' + imgTag(photoOf(neighbours[0]), neighbours[0].title) + '</div></div>';
+    }
+    if (neighbours[1]) {
+      stack += '<div class="print-frame naf-print naf-print--c"><div class="photo photo--plain">' + imgTag(photoOf(neighbours[1]), neighbours[1].title) + '</div></div>';
+    }
+    if (film) {
+      stack += '<button class="naf-film-card" data-act="film" data-id="' + esc(film.id) + '">' +
+        '<span class="fc-still">' + imgTag(filmStill(film), film.title) + '</span>' +
+        '<span class="fc-body"><span class="fc-kicker">Film</span><span class="fc-title">' + esc(film.title) + '</span></span>' +
+        '<span class="fc-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7Z"/></svg></span></button>';
+    }
+
+    var paragraphs = (ev.text || []).slice(0, 2).map(function (t) { return '<p>' + esc(t) + '</p>'; }).join('');
+    var yearCards = years.map(function (y) {
+      return '<button class="year-card' + (y.year === ev.year ? ' is-on' : '') + '" data-act="naf-year" data-year="' + y.year + '">' +
+        '<b>' + y.year + '</b><span>' + esc(y.events[0].title) + '</span></button>';
+    }).join('');
+
+    host.innerHTML =
+      '<div class="naf-main">' +
+      '<div class="naf-media"><div class="naf-media-stack">' + stack + '</div></div>' +
+      '<div class="naf-text">' +
+      '<span class="naf-eyebrow"><span class="rule"></span>Era ' + ROMAN[state.era] + ' · ' + esc(d.title || '') + '</span>' +
+      '<h2 class="naf-title">' + esc(ev.title) + '</h2>' +
+      '<div class="naf-paras">' + paragraphs + '</div>' +
+      '<div class="naf-meta"><span class="context-tag">' + esc(ev.date || ev.year) + '</span>' +
+      (ev.state ? '<span>' + esc(ev.state) + '</span>' : '') +
+      '<span>' + (index + 1) + ' of ' + list.length + '</span></div>' +
+      '<div class="naf-actions">' +
+      '<button class="round-btn" data-act="naf-prev" aria-label="Previous moment"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>' +
+      '<button class="round-btn round-btn--navy" data-act="naf-next" aria-label="Next moment"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>' +
+      '<button class="btn btn--ghost btn--sm" data-act="naf-mode" data-mode="eras">Back to the eras</button>' +
+      '</div>' +
+      '<div class="naf-meta"><span class="muted">Next: ' + esc(next.title) + '</span></div>' +
+      '</div></div>' +
+      '<div class="naf-years">' + yearCards + '</div>';
+  }
+
+  /* ============================================================
+     VIEW — chiefs
+     ============================================================ */
+
+  function viewChiefs() {
+    var spanYears = chiefSpan();
+    var totalMs = Math.max(1, spanYears.max - spanYears.min);
+
+    function pct(date) { return ((date - spanYears.min) / totalMs) * 100; }
+
+    var segments = CHIEFS.map(function (c, i) {
+      var from = parseISO(c.from) || spanYears.min;
+      var to = c.to ? (parseISO(c.to) || spanYears.max) : spanYears.max;
+      var left = Math.max(0, Math.min(100, pct(from)));
+      var width = Math.max(0.22, Math.min(100 - left, pct(to) - left));
+      return '<button class="tenure-seg" data-act="record" data-set="chiefs" data-index="' + i + '"' +
+        ' style="left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%"' +
+        ' aria-label="' + esc((c.shortName || c.name) + ', ' + span(c.from, c.to)) + '">' +
+        (width > 2.4 ? '<span>' + (c.no || i + 1) + '</span>' : '') + '</button>';
+    }).join('');
+
+    var ticks = '';
+    for (var year = 1970; year <= 2020; year += 10) {
+      var p = pct(new Date(year, 0, 1));
+      if (p > 0 && p < 100) {
+        ticks += '<span class="tenure-tick" style="left:' + p.toFixed(3) + '%">' + year + '</span>';
+      }
+    }
+
+    var cards = CHIEFS.map(function (c, i) {
+      return '<button class="chief-card" data-act="record" data-set="chiefs" data-index="' + i + '">' +
+        '<span class="chief-print"><span class="chief-photo">' +
+        imgTag(portraitOf(c), c.name) +
+        '<span class="chief-initials">' + esc(initials(c.name)) + '</span>' +
+        '<span class="chief-badge">' + ordinal(c.no || i + 1) + '</span>' +
+        '</span></span>' +
+        '<span class="chief-meta">' +
+        '<span class="chief-name">' + esc(c.shortName || c.name) + '</span>' +
+        '<span class="chief-years">' + esc(span(c.from, c.to)) + '</span>' +
+        '<span class="chief-duration">' + esc(tenureText(c.from, c.to)) + '</span>' +
+        '</span></button>';
+    }).join('');
+
+    var lineage = filmById('lineage');
+
+    return {
+      html: '<div class="screen-inner chiefs">' +
+        '<header class="page-head">' +
+        masthead('Command · 1963 to today', 'The officers who led the service',
+          'Two German commanders, then the Nigerian officers who have led the service since 1966. The bar draws every tenure to scale; the portraits run in order of appointment.') +
+        '<div class="head-tools">' +
+        (lineage ? '<button class="chief-film" data-act="film" data-id="' + esc(lineage.id) + '">' +
+          '<span class="chief-film-still">' + imgTag(filmStill(lineage), lineage.title) + '</span>' +
+          '<span class="chief-film-body"><span class="chief-film-kicker">1963 – today</span>' +
+          '<span class="chief-film-title">' + esc(lineage.title) + '</span></span>' +
+          '<span class="chief-film-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7Z"/></svg></span>' +
+          '</button>' : '') +
+        '</div></header>' +
+        '<div class="tenure">' +
+        '<div class="tenure-bar" id="tenure-bar">' + segments + '</div>' +
+        '<div class="tenure-axis">' + ticks + '</div>' +
+        '</div>' +
+        '<div class="chief-wall" id="chief-wall">' + cards + '</div>' +
+        '<button class="chief-arrow chief-arrow--prev" data-act="chief-scroll" data-delta="-1" aria-label="Previous chiefs">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>' +
+        '<button class="chief-arrow chief-arrow--next" data-act="chief-scroll" data-delta="1" aria-label="More chiefs">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>' +
+        '</div>',
+      after: function () { bindChiefRail(); }
+    };
+  }
+
+  function bindChiefRail() {
+    var rail = byId('chief-wall');
+    if (!rail) return;
+    var drag = null;
+
+    rail.addEventListener('pointerdown', function (ev) {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+      drag = { id: ev.pointerId, x: ev.clientX, start: rail.scrollLeft, moved: 0 };
+    });
+
+    function move(ev) {
+      if (!drag || drag.id !== ev.pointerId) return;
+      var dx = ev.clientX - drag.x;
+      drag.moved = Math.max(drag.moved, Math.abs(dx));
+      if (drag.moved > 8) {
+        rail.classList.add('is-dragging');
+        rail.scrollLeft = drag.start - dx;
+        if (ev.cancelable) ev.preventDefault();
+      }
+    }
+
+    function end(ev) {
+      if (!drag || drag.id !== ev.pointerId) return;
+      if (drag.moved > 8) state.suppressClick = true;
+      drag = null;
+      rail.classList.remove('is-dragging');
+    }
+
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+
+    rail.addEventListener('wheel', function (ev) {
+      if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+      rail.scrollLeft += ev.deltaY;
+      ev.preventDefault();
+    }, { passive: false });
+  }
+
+  function stepChiefRail(delta) {
+    var rail = byId('chief-wall');
+    if (!rail) return;
+    var card = qs('.chief-card', rail);
+    var step = card ? card.offsetWidth + 16 : 420;
+    rail.scrollBy({ left: delta * step * 2, behavior: 'smooth' });
+  }
+
+  function chiefSpan() {
+    var min = null;
+    var max = null;
+    var today = new Date();
+    CHIEFS.forEach(function (c) {
+      var a = parseISO(c.from);
+      var b = c.to ? parseISO(c.to) : today;
+      if (a && (!min || a < min)) min = a;
+      if (b && (!max || b > max)) max = b;
+    });
+    return { min: min || new Date(1963, 0, 1), max: max || today };
+  }
+
+  /* ============================================================
+     VIEW — college
+     ============================================================ */
+
+  function layoutCollage() {
+    var host = byId('light-table');
+    if (!host) return;
+    var pieces = qsa('.collage-piece', host);
+    if (!pieces.length) return;
+
+    var W = host.clientWidth;
+    var H = host.clientHeight;
+    var cols = 6;
+    var rows = Math.ceil(pieces.length / cols);
+    var gap = 15;
+    var colW = W / cols;
+    var maxH = (H - 26 * (rows - 1)) / rows;
+    var w = Math.min(258, colW - gap);
+
+    var h = 0;
+    for (var pass = 0; pass < 6; pass++) {
+      pieces.forEach(function (p) { p.style.width = w + 'px'; });
+      h = 0;
+      pieces.forEach(function (p) { h = Math.max(h, p.offsetHeight); });
+      if (h <= maxH) break;
+      w = Math.max(120, Math.floor(w * (maxH / h)));
+    }
+
+    var rowGap = rows > 1 ? Math.max(12, Math.min(26, (H - rows * h) / (rows - 1))) : 0;
+    var totalH = rows * h + rowGap * (rows - 1);
+    var startY = Math.max(4, (H - totalH) / 2);
+    var rand = rng(19760529);
+
+    pieces.forEach(function (p, i) {
+      var c = i % cols;
+      var r = Math.floor(i / cols);
+      var cx = colW * (c + 0.5) + (rand() - 0.5) * 12;
+      var cy = startY + r * (h + rowGap) + h / 2 + (rand() - 0.5) * 8;
+      cx = Math.max(w / 2 + 8, Math.min(W - w / 2 - 8, cx));
+      cy = Math.max(h / 2 + 4, Math.min(H - h / 2 - 4, cy));
+      p.style.left = Math.round(cx - w / 2) + 'px';
+      p.style.top = Math.round(cy - h / 2) + 'px';
+      p.style.setProperty('--rot', ((rand() - 0.5) * 6).toFixed(2) + 'deg');
+    });
+  }
+
+  function viewCollage() {
+    var items = COLLEGE.items || [];
+    var pieces = items.map(function (item, i) {
+      var photo = (item.photos && item.photos[0]) || COLLEGE.hero || FALLBACK_PHOTO;
+      return '<div class="collage-piece" data-act="college-open" data-index="' + i + '" role="button" tabindex="0" style="z-index:' + (10 + i) + '">' +
+        '<div class="print-frame"><div class="photo">' + imgTag(photo, item.title) + '</div></div>' +
+        '<div class="collage-cap"><b>' + esc(item.date || '') + '</b><span>' + esc(item.title) + '</span></div>' +
+        '</div>';
+    }).join('');
+
+    return {
+      html: '<div class="screen-inner collage">' +
+        '<header class="page-head">' +
+        masthead(COLLEGE.eyebrow || 'The College', 'The College',
+          COLLEGE.intro || 'Seventeen records from the history of the College, laid out on a light table. Drag the prints aside, and touch one to read it.') +
+        '<div class="head-tools"><img class="head-crest" src="assets/icons/afcsc.png" alt="College crest" onerror="this.style.display=\'none\'" /></div>' +
+        '</header>' +
+        '<div class="light-table" id="light-table">' + pieces + '</div></div>',
+      after: function () { bindCollage(); }
+    };
+  }
+
+  function stageScale() {
+    var m = /scale\(([\d.]+)\)/.exec(dom.stage.style.transform || '');
+    return m ? parseFloat(m[1]) : 1;
+  }
+
+  function bindCollage() {
+    var host = byId('light-table');
+    if (!host) return;
+    layoutCollage();
+    var pieces = qsa('.collage-piece', host);
+
+    pieces.forEach(function (piece) {
+      piece.addEventListener('pointerdown', function (ev) {
+        if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+        resetIdle();
+        var scale = stageScale() || 1;
+        var hostRect = host.getBoundingClientRect();
+        var rect = piece.getBoundingClientRect();
+        state.drag = {
+          el: piece,
+          pointerId: ev.pointerId,
+          host: host,
+          offsetX: (ev.clientX - rect.left) / scale,
+          offsetY: (ev.clientY - rect.top) / scale,
+          startClientX: ev.clientX,
+          startClientY: ev.clientY,
+          hostW: hostRect.width / scale,
+          hostH: hostRect.height / scale,
+          w: rect.width / scale,
+          h: rect.height / scale,
+          moved: 0,
+          baseZ: piece.style.zIndex
+        };
+        piece.classList.add('is-drag');
+        piece.style.zIndex = 80;
+        try { piece.setPointerCapture(ev.pointerId); } catch (e) {}
+      });
+
+      piece.addEventListener('pointermove', function (ev) {
+        var d = state.drag;
+        if (!d || d.el !== piece || d.pointerId !== ev.pointerId) return;
+        var scale = stageScale() || 1;
+        var hostRect = host.getBoundingClientRect();
+        var dx = ev.clientX - d.startClientX;
+        var dy = ev.clientY - d.startClientY;
+        d.moved = Math.max(d.moved, Math.abs(dx) + Math.abs(dy));
+        var left = (ev.clientX - hostRect.left) / scale - d.offsetX;
+        var top = (ev.clientY - hostRect.top) / scale - d.offsetY;
+        left = Math.max(0, Math.min(d.hostW - d.w, left));
+        top = Math.max(0, Math.min(d.hostH - d.h, top));
+        piece.style.left = left + 'px';
+        piece.style.top = top + 'px';
+      });
+
+      function release(ev) {
+        var d = state.drag;
+        if (!d || d.el !== piece) return;
+        var dragged = d.moved > 10;
+        piece.classList.remove('is-drag');
+        piece.style.zIndex = dragged ? 70 : d.baseZ;
+        state.suppressClick = dragged;
+        state.drag = null;
+      }
+
+      piece.addEventListener('pointerup', release);
+      piece.addEventListener('pointercancel', release);
+      piece.addEventListener('lostpointercapture', function (ev) {
+        var d = state.drag;
+        if (!d || d.el !== piece) return;
+        piece.classList.remove('is-drag');
+        state.drag = null;
+      });
+    });
+  }
+
+  /* ============================================================
+     VIEW — film archive
+     ============================================================ */
+
+  function filmList() {
+    var list = FILMS.filter(function (f) { return f.id !== 'intro'; });
+    return list.length ? list : FILMS.slice();
+  }
+
+  function viewFilms() {
+    var list = filmList();
+    var feature = list[0] || {};
+    var rows = list.map(function (f, i) {
+      return '<button class="film-row' + (i === 0 ? ' is-on' : '') + '" data-act="film" data-id="' + esc(f.id) + '">' +
+        '<span class="film-idx">' + pad2(i + 1) + '</span>' +
+        '<span class="film-thumb">' + imgTag(filmStill(f), f.title) + '</span>' +
+        '<span class="film-titles"><b>' + esc(f.title) + '</b><span>' + esc(f.subtitle || '') + '</span></span>' +
+        '<span class="film-go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7Z"/></svg></span>' +
+        '</button>';
+    }).join('');
+
+    return {
+      html: '<div class="screen-inner films">' +
+        '<header class="page-head">' +
+        masthead('Moving pictures', 'Film Archive',
+          'Seven short films from the service and the College: the founding years, the civil war, the Hercules fleet and sixty years of the Nigerian Air Force.') +
+        '<div class="head-tools"><img class="head-crest" src="assets/icons/naf.png" alt="Nigerian Air Force crest" onerror="this.style.display=\'none\'" /></div>' +
+        '</header>' +
+        '<div class="theatre">' +
+        '<div class="theatre-hero">' +
+        imgTag(filmStill(feature), feature.title, 'hero-still') +
+        '<img class="theatre-crest" src="assets/icons/naf.png" alt="" onerror="this.style.display=\'none\'" />' +
+        '<button class="theatre-play" data-act="film" data-id="' + esc(feature.id) + '" aria-label="Play ' + esc(feature.title) + '">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7Z"/></svg></button>' +
+        '<div class="theatre-hero-body">' +
+        '<span class="eyebrow">Now showing</span>' +
+        '<h3>' + esc(feature.title) + '</h3>' +
+        '<p>' + esc(feature.description || '') + '</p>' +
+        '<div class="theatre-hero-actions">' +
+        '<button class="btn btn--brass" data-act="film" data-id="' + esc(feature.id) + '">Play the film</button>' +
+        '<span class="muted" style="color:var(--on-dark-muted);font-size:15px">' + esc(feature.subtitle || '') + '</span>' +
+        '</div></div></div>' +
+        '<div class="theatre-list" id="theatre-list">' + rows + '</div>' +
+        '</div></div>',
+      after: function () {}
+    };
+  }
+
+  /* ============================================================
+     VIEW — air warfare
+     ============================================================ */
+
+  function viewDaw() {
+    var items = DAW.items || [];
+    var tiles = items.slice(0, 8).map(function (item, i) {
+      return '<div class="daw-tile" data-act="daw-flip" data-index="' + i + '" role="button" tabindex="0">' +
+        '<div class="daw-tile-inner">' +
+        '<div class="daw-face daw-face--front">' +
+        '<span class="daw-date">' + esc(item.date) + '</span>' +
+        '<span class="daw-tile-title">' + esc(item.title) + '</span>' +
+        '<span class="daw-tile-go">Turn the card' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>' +
+        '</div>' +
+        '<div class="daw-face daw-face--back">' +
+        '<span class="daw-back-date">' + esc(item.date) + '</span>' +
+        '<span class="daw-back-title">' + esc(item.title) + '</span>' +
+        '<span class="daw-back-text">' + esc((item.text && item.text[0]) || '') + '</span>' +
+        '<button class="btn btn--brass btn--sm" data-act="record" data-set="daw" data-index="' + i + '">Read the record</button>' +
+        '</div></div></div>';
+    }).join('');
+
+    var ribbonItems = items.map(function (item) {
+      return '<span class="daw-ribbon-item"><b>' + esc(item.date) + '</b>' + esc(item.title) + '</span>';
+    }).join('');
+    var ribbon = '<div class="daw-ribbon"><div class="daw-ribbon-track">' + ribbonItems + ribbonItems + '</div></div>';
+
+    return {
+      html: '<div class="screen-inner daw">' +
+        '<div class="daw-hero">' +
+        imgTag(DAW.hero || FALLBACK_PHOTO, DAW.heroCaption || 'Department of Air Warfare', 'daw-hero-img') +
+        '<div class="daw-hero-veil"></div>' +
+        '<img class="daw-crest" src="assets/icons/naf.png" alt="Nigerian Air Force crest" onerror="this.style.display=\'none\'" />' +
+        '<div class="daw-hero-body">' +
+        '<span class="eyebrow"><span class="rule"></span>Air Warfare · The Department</span>' +
+        '<h2>' + esc(DAW.title || 'History of the Department of Air Warfare') + '</h2>' +
+        '<p>' + esc(DAW.intro || '') + '</p>' +
+        '</div></div>' +
+        '<div class="daw-body"><div class="daw-tiles">' + tiles + '</div>' + ribbon + '</div>' +
+        '</div>',
+      after: function () {}
+    };
+  }
+
+  /* ============================================================
+     RECORD SETS
+     ============================================================ */
+
+  function buildRecordSets() {
+    if (state.sets) return state.sets;
+    var sets = {};
+
+    sets.chiefs = CHIEFS.map(function (c) {
+      var facts = [['Tenure', span(c.from, c.to)]];
+      if (c.born) facts.push(['Born', fix(c.born)]);
+      if (c.died) facts.push(['Died', fix(c.died)]);
+      if (c.state) facts.push(['State', fix(c.state)]);
+      return {
+        img: portraitOf(c),
+        fig: 'Chief of the Air Staff No. ' + pad2(c.no || 0),
+        eyebrow: 'Commander · Chief of the Air Staff',
+        name: c.name,
+        role: c.rank || '',
+        facts: facts,
+        copy: (c.bio || []).map(fix),
+        subhead: 'Achievements',
+        list: (c.achievements || []).map(fix),
+        sources: (c.sources || []).map(fix)
+      };
+    });
+
+    sets.college = [];
+    state.collegeMap = {};
+    (COLLEGE.items || []).forEach(function (item, itemIndex) {
+      var photos = (item.photos && item.photos.length) ? item.photos : [COLLEGE.hero || FALLBACK_PHOTO];
+      state.collegeMap[itemIndex] = sets.college.length;
+      photos.forEach(function (src, photoIndex) {
+        sets.college.push({
+          img: src,
+          fig: 'College record · ' + fix(item.date || ''),
+          eyebrow: COLLEGE.eyebrow || 'Armed Forces Command and Staff College, Nigeria',
+          name: item.title,
+          role: item.date || '',
+          facts: [['Collection', 'History of the College'], ['Photograph', (photoIndex + 1) + ' of ' + photos.length]],
+          copy: (item.text || []).map(fix),
+          subhead: item.caption ? 'Caption' : '',
+          list: item.caption ? [fix(item.caption)] : [],
+          sources: []
+        });
+      });
+    });
+
+    sets.daw = (DAW.items || []).map(function (item, i) {
+      return {
+        img: (item.photos && item.photos[0]) || DAW.hero || FALLBACK_PHOTO,
+        fig: 'Department of Air Warfare · ' + fix(item.date || ''),
+        eyebrow: DAW.eyebrow || 'Department of Air Warfare',
+        name: item.title,
+        role: item.date || '',
+        facts: [['Collection', 'History of the Department of Air Warfare'], ['Record', (i + 1) + ' of ' + (DAW.items || []).length]],
+        copy: (item.text || []).map(fix),
+        subhead: item.caption ? 'Caption' : '',
+        list: item.caption ? [fix(item.caption)] : [],
+        sources: []
+      };
+    });
+
+    sets.films = FILMS.map(function (f) {
+      return {
+        img: filmStill(f),
+        fig: 'Film · ' + fix(f.subtitle || ''),
+        eyebrow: 'Film archive',
+        name: f.title,
+        role: f.subtitle || '',
+        facts: [['Runtime', 'Short film'], ['Collection', 'SK Aneke Hall of Fame']],
+        copy: [fix(f.description || '')],
+        subhead: '',
+        list: [],
+        sources: []
+      };
+    });
+
+    state.sets = sets;
+    return sets;
+  }
+
+  /* ============================================================
+     OVERLAY — record viewer
+     ============================================================ */
+
+  function openRecord(setName, index) {
+    var sets = buildRecordSets();
+    var list = sets[setName];
+    if (!list || !list.length) return;
+    if (setName === 'college' && state.collegeMap && state.collegeMap[index] !== undefined) {
+      index = state.collegeMap[index];
+    }
+    state.record.set = setName;
+    state.record.index = Math.max(0, Math.min(list.length - 1, index || 0));
+    dom.record.classList.remove('hidden');
+    paintRecord();
+    resetIdle();
+  }
+
+  function paintRecord() {
+    var sets = buildRecordSets();
+    var list = sets[state.record.set] || [];
+    var rec = list[state.record.index];
+    if (!rec) return;
+
+    var img = byId('record-img');
+    img.src = rec.img || FALLBACK_PHOTO;
+    img.alt = fix(rec.name || '');
+    img.style.opacity = '';
+    byId('record-fig').textContent = rec.fig || '';
+    byId('record-hint').textContent = (state.record.index + 1) + ' of ' + list.length;
+
+    var facts = (rec.facts || []).filter(function (f) { return f[1]; }).map(function (f) {
+      return '<span class="record-fact"><b>' + esc(f[0]) + '</b><span>' + esc(f[1]) + '</span></span>';
+    }).join('');
+
+    var body =
+      '<span class="record-eyebrow">' + esc(rec.eyebrow || '') + '</span>' +
+      '<h2 class="record-name">' + esc(rec.name || '') + '</h2>' +
+      (rec.role ? '<p class="record-role">' + esc(rec.role) + '</p>' : '') +
+      '<div class="record-rule"></div>' +
+      (facts ? '<div class="record-facts">' + facts + '</div>' : '') +
+      (rec.copy || []).filter(Boolean).map(function (p) {
+        return '<p class="record-copy">' + esc(p) + '</p>';
+      }).join('') +
+      (rec.list && rec.list.length
+        ? '<span class="record-subhead">' + esc(rec.subhead || 'Details') + '</span><ul class="record-list">' +
+          rec.list.map(function (li) { return '<li>' + esc(li) + '</li>'; }).join('') + '</ul>'
+        : '') +
+      (rec.sources && rec.sources.length
+        ? '<span class="record-subhead">Sources</span><div class="record-sources">' +
+          rec.sources.map(function (s) { return '<span class="record-source">' + esc(s) + '</span>'; }).join('') + '</div>'
+        : '');
+
+    byId('record-body').innerHTML = body;
+    byId('record-body').scrollTop = 0;
+  }
+
+  function stepRecord(delta) {
+    var sets = buildRecordSets();
+    var list = sets[state.record.set] || [];
+    if (!list.length) return;
+    state.record.index = (state.record.index + delta + list.length) % list.length;
+    paintRecord();
+  }
+
+  function closeRecord() { dom.record.classList.add('hidden'); }
+
+  /* ============================================================
+     OVERLAY — photo viewer
+     ============================================================ */
+
+  function eraPhotos(eraIndex) {
+    var out = [];
+    eraEvents(eraIndex).forEach(function (ev) {
+      (ev.photos || []).forEach(function (src) {
+        out.push({ src: src, caption: ev.caption || ev.title, date: ev.date || ev.year });
+      });
+    });
+    return out.length ? out : [{ src: FALLBACK_PHOTO, caption: 'Archive photograph', date: '' }];
+  }
+
+  function openLightbox(list, index, collection) {
+    if (!list || !list.length) return;
+    state.lightbox = { list: list, index: Math.max(0, Math.min(list.length - 1, index || 0)), collection: collection || '' };
+    dom.lightbox.classList.remove('hidden');
+    paintLightbox();
+    resetIdle();
+  }
+
+  function paintLightbox() {
+    var box = state.lightbox;
+    var item = box.list[box.index];
+    if (!item) return;
+    byId('lightbox-n').textContent = pad2(box.index + 1);
+    byId('lightbox-total').textContent = pad2(box.list.length);
+    byId('lightbox-collection').textContent = box.collection;
+    var img = byId('lightbox-img');
+    img.src = item.src;
+    img.alt = fix(item.caption || '');
+    img.style.animation = 'none';
+    void img.offsetWidth;
+    img.style.animation = 'zoom-in 380ms var(--ease)';
+    byId('lightbox-caption').innerHTML =
+      (item.date ? '<span class="cap-date">' + esc(item.date) + '</span>' : '') + esc(item.caption || '');
+    byId('lightbox-strip').innerHTML = box.list.map(function (it, i) {
+      return '<button class="strip-thumb' + (i === box.index ? ' is-on' : '') + '" data-act="lightbox-jump" data-index="' + i + '">' +
+        '<img src="' + esc(it.src) + '" alt="" onerror="this.style.opacity=0" /></button>';
+    }).join('');
+    var active = qs('.strip-thumb.is-on', byId('lightbox-strip'));
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+
+  function stepLightbox(delta) {
+    var box = state.lightbox;
+    if (!box.list.length) return;
+    box.index = (box.index + delta + box.list.length) % box.list.length;
+    paintLightbox();
+  }
+
+  function closeLightbox() { dom.lightbox.classList.add('hidden'); }
+
+  /* ============================================================
+     OVERLAY — film player
+     ============================================================ */
+
+  function openFilm(id) {
+    var film = filmById(id) || filmList()[0];
+    if (!film) return;
+    state.films.current = film;
+    dom.player.classList.remove('hidden');
+    dom.player.classList.add('is-playing');
+    byId('player-title').textContent = fix(film.title || '');
+    byId('player-sub').textContent = fix(film.subtitle || '');
+    byId('player-missing-file').textContent = fix(film.src || '');
+    byId('player-missing').classList.add('hidden');
+    byId('player-read').classList.toggle('hidden', !film.description);
+    byId('player-read').dataset.id = film.id;
+    var video = dom.playerVideo;
+    video.classList.remove('hidden');
+    video.src = film.src;
+    video.load();
+    var p = video.play();
+    if (p && p.catch) p.catch(function () {});
+    updatePlayerTime();
+    resetIdle();
+  }
+
+  function closeFilm() {
+    var video = dom.playerVideo;
+    try { video.pause(); } catch (e) {}
+    video.removeAttribute('src');
+    try { video.load(); } catch (e) {}
+    dom.player.classList.add('hidden');
+    dom.player.classList.remove('is-playing', 'is-idle');
+  }
+
+  function toggleFilm() {
+    var video = dom.playerVideo;
+    if (video.paused) {
+      var p = video.play();
+      if (p && p.catch) p.catch(function () {});
+      dom.player.classList.add('is-playing');
+    } else {
+      video.pause();
+      dom.player.classList.remove('is-playing');
+    }
+  }
+
+  function fmtTime(sec) {
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function updatePlayerTime() {
+    var video = dom.playerVideo;
+    var duration = video.duration || 0;
+    byId('player-time').textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(duration);
+    var pct = duration ? (video.currentTime / duration) * 100 : 0;
+    byId('player-scrub-fill').style.width = pct.toFixed(2) + '%';
+  }
+
+  /* ============================================================
+     IDLE
+     ============================================================ */
+
+  function resetIdle() {
+    clearTimeout(state.idleTimer);
+    clearInterval(state.idleCountTimer);
+    if (!dom.idle.classList.contains('hidden')) hideIdle();
+    state.idleTimer = setTimeout(startIdle, IDLE_MS);
+  }
+
+  function startIdle() {
+    if (isOverlayOpen()) { state.idleTimer = setTimeout(startIdle, IDLE_MS); return; }
+    state.idleLeft = IDLE_COUNT;
+    byId('idle-count').textContent = state.idleLeft;
+    dom.idle.classList.remove('hidden');
+    clearInterval(state.idleCountTimer);
+    state.idleCountTimer = setInterval(function () {
+      state.idleLeft -= 1;
+      byId('idle-count').textContent = Math.max(0, state.idleLeft);
+      if (state.idleLeft <= 0) {
+        clearInterval(state.idleCountTimer);
+        hideIdle();
+        state.stack.length = 0;
+        navigate('#/welcome', { replace: true });
+      }
+    }, 1000);
+  }
+
+  function hideIdle() {
+    dom.idle.classList.add('hidden');
+    clearInterval(state.idleCountTimer);
+  }
+
+  function isOverlayOpen() {
+    return !dom.player.classList.contains('hidden') || !dom.lightbox.classList.contains('hidden') || !dom.record.classList.contains('hidden');
+  }
+
+  function closeTopOverlay() {
+    if (!dom.player.classList.contains('hidden')) { closeFilm(); return true; }
+    if (!dom.record.classList.contains('hidden')) { closeRecord(); return true; }
+    if (!dom.lightbox.classList.contains('hidden')) { closeLightbox(); return true; }
+    return false;
+  }
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+
+  var VIEWS = {
+    welcome: viewWelcome,
+    history: viewHistory,
+    naf: viewNaf,
+    chiefs: viewChiefs,
+    college: viewCollage,
+    films: viewFilms,
+    daw: viewDaw
+  };
+
+  function render() {
+    var route = parseHash();
+    var key = route.name;
+    if (!VIEWS[key]) key = 'history';
+
+    var section = key === 'welcome' ? WELCOME_SECTION : sectionOf(key);
+
+    var view = VIEWS[key](route.params);
+    dom.screen.innerHTML = view.html;
+    state.current = key;
+    setChrome(section);
+    if (view.after) view.after();
+    revealAll(dom.screen);
+
+    var scroller = qs('.history-scroll, .chief-wall', dom.screen);
+    if (scroller) scroller.scrollTop = 0;
+
+    if (route.params.chief) openRecord('chiefs', (parseInt(route.params.chief, 10) || 1) - 1);
+    if (route.params.open) openRecord('college', parseInt(route.params.open, 10) || 0);
+    if (route.params.film) openFilm(route.params.film);
+  }
+
+  function onHashChange() {
+    var next = parseHash().name;
+    if (!VIEWS[next]) next = 'history';
+    var prev = state.current;
+    if (prev && prev !== next && !state.skipCurtain) {
+      var section = next === 'welcome' ? WELCOME_SECTION : sectionOf(next);
+      showCurtain(section, function () { render(); });
+    } else {
+      state.skipCurtain = false;
+      render();
+    }
+  }
+
+  /* ============================================================
+     EVENTS
+     ============================================================ */
+
+  function onClick(ev) {
+    var target = ev.target.closest ? ev.target.closest('[data-act]') : null;
+    if (!target) return;
+    if (state.suppressClick) { state.suppressClick = false; return; }
+    var act = target.dataset.act;
+    resetIdle();
+
+    switch (act) {
+      case 'go':
+        navigate(target.dataset.route || '#/history');
+        break;
+      case 'home':
+        navigate('#/welcome');
+        break;
+      case 'back':
+        goBack();
+        break;
+      case 'close-app':
+        closeTopOverlay();
+        navigate('#/welcome');
+        break;
+      case 'exit-app':
+        closeTopOverlay();
+        try { window.close(); } catch (err) {}
+        break;
+      case 'chapter':
+        activateChapter(+target.dataset.index);
+        break;
+      case 'prev-section':
+      case 'next-section':
+        stepSection(act === 'next-section' ? 1 : -1);
+        break;
+      case 'moment':
+        navigate(hashFor('naf', { era: target.dataset.era, year: target.dataset.year }));
+        break;
+      case 'lightbox-era':
+        openLightbox(eraPhotos(+target.dataset.era), 0, 'Era ' + ROMAN[+target.dataset.era] + ' · ' + (DECADES[+target.dataset.era] || {}).title);
+        break;
+      case 'lightbox-close':
+        closeLightbox();
+        break;
+      case 'lightbox-prev':
+        stepLightbox(-1);
+        break;
+      case 'lightbox-next':
+        stepLightbox(1);
+        break;
+      case 'lightbox-jump':
+        state.lightbox.index = +target.dataset.index;
+        paintLightbox();
+        break;
+      case 'era-select':
+        selectEra(+target.dataset.era);
+        break;
+      case 'era-more':
+        enterTimeline(target.dataset.era, target.dataset.year);
+        break;
+      case 'era-jump':
+        var jumpEra = +target.dataset.era;
+        var jumpList = eraEvents(jumpEra);
+        state.moment = 0;
+        enterTimeline(jumpEra, jumpList.length ? jumpList[0].year : DECADES[jumpEra].from);
+        break;
+      case 'naf-mode':
+        if (target.dataset.mode === 'eras') navigate(hashFor('naf', { era: state.era }));
+        else {
+          var list = eraEvents(state.era);
+          var year = state.year || (list.length ? list[0].year : DECADES[state.era].from);
+          state.moment = 0;
+          enterTimeline(state.era, year);
+        }
+        break;
+      case 'naf-year':
+        var list2 = eraEvents(state.era);
+        var year2 = +target.dataset.year;
+        for (var i2 = 0; i2 < list2.length; i2++) if (list2[i2].year === year2) { state.moment = i2; break; }
+        paintTimeline();
+        break;
+      case 'naf-prev':
+        state.moment = (state.moment || 0) - 1;
+        paintTimeline();
+        break;
+      case 'naf-next':
+        state.moment = (state.moment || 0) + 1;
+        paintTimeline();
+        break;
+      case 'record':
+        openRecord(target.dataset.set || 'chiefs', +target.dataset.index || 0);
+        break;
+      case 'record-close':
+        closeRecord();
+        break;
+      case 'record-prev':
+        stepRecord(-1);
+        break;
+      case 'record-next':
+        stepRecord(1);
+        break;
+      case 'college-open':
+        openRecord('college', +target.dataset.index || 0);
+        break;
+      case 'chief-scroll':
+        stepChiefRail(+target.dataset.delta || 1);
+        break;
+      case 'daw-flip':
+        target.classList.toggle('is-flip');
+        break;
+      case 'film':
+        openFilm(target.dataset.id);
+        break;
+      case 'film-close':
+        closeFilm();
+        break;
+      case 'film-toggle':
+        toggleFilm();
+        break;
+      case 'film-read':
+        openRecord('films', filmIndex(target.dataset.id));
+        break;
+      case 'film-next':
+        openFilm(nextFilmId());
+        break;
+      case 'idle-stay':
+        hideIdle();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function filmIndex(id) {
+    for (var i = 0; i < FILMS.length; i++) if (FILMS[i].id === id) return i;
+    return 0;
+  }
+
+  function nextFilmId() {
+    var list = filmList();
+    if (!list.length) return null;
+    var current = state.films.current;
+    var idx = 0;
+    for (var i = 0; i < list.length; i++) if (current && list[i].id === current.id) idx = i;
+    return list[(idx + 1) % list.length].id;
+  }
+
+  function stepSection(delta) {
+    var idx = SECTIONS.map(function (s) { return s.key; }).indexOf(state.current);
+    if (idx < 0) idx = delta > 0 ? -1 : 0;
+    var next = SECTIONS[(idx + delta + SECTIONS.length) % SECTIONS.length];
+    navigate(next.route);
+  }
+
+  function onKeyDown(ev) {
+    if (ev.key === 'Escape') {
+      if (closeTopOverlay()) { ev.preventDefault(); return; }
+      if (document.body.dataset.section !== 'history') navigate('#/history');
+      return;
+    }
+    var section = state.current;
+    if (section === 'naf' && state.year) {
+      if (ev.key === 'ArrowRight') { state.moment = (state.moment || 0) + 1; paintTimeline(); }
+      if (ev.key === 'ArrowLeft') { state.moment = (state.moment || 0) - 1; paintTimeline(); }
+    } else if (!dom.lightbox.classList.contains('hidden')) {
+      if (ev.key === 'ArrowRight') stepLightbox(1);
+      if (ev.key === 'ArrowLeft') stepLightbox(-1);
+    }
+  }
+
+  /* ============================================================
+     BOOT
+     ============================================================ */
+
+  function boot() {
+    dom.stage = byId('stage');
+    dom.screen = byId('screen');
+    dom.topbar = byId('topbar');
+    dom.dock = byId('dock');
+    dom.dockItems = byId('dock-items');
+    dom.lightbox = byId('lightbox');
+    dom.record = byId('record');
+    dom.player = byId('player');
+    dom.playerVideo = byId('player-video');
+    dom.idle = byId('idle');
+
+    scaleStage();
+    window.addEventListener('resize', scaleStage);
+
+    dom.stage.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', function () { resetIdle(); }, true);
+
+    var video = dom.playerVideo;
+    video.addEventListener('timeupdate', updatePlayerTime);
+    video.addEventListener('loadedmetadata', updatePlayerTime);
+    video.addEventListener('error', function () {
+      if (dom.player.classList.contains('hidden')) return;
+      byId('player-missing').classList.remove('hidden');
+      video.classList.add('hidden');
+    });
+    video.addEventListener('click', function () { resetIdle(); toggleFilm(); });
+
+    var scrub = byId('player-scrub');
+    scrub.addEventListener('pointerdown', function (ev) {
+      var rect = scrub.getBoundingClientRect();
+      var duration = video.duration || 0;
+      if (!duration) return;
+      var ratio = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+      video.currentTime = ratio * duration;
+      updatePlayerTime();
+      resetIdle();
+    });
+
+    dom.player.addEventListener('pointermove', function () { resetIdle(); });
+
+    if (!location.hash) history.replaceState(null, '', '#/welcome');
+    window.addEventListener('hashchange', onHashChange);
+
+    render();
+    resetIdle();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();

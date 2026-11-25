@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>History - SK Aneke Hall of Fame | Department of Air Warfare</title>
+<title>SK Aneke Hall of Fame | Department of Air Warfare</title>
 <link rel="icon" href="assets/icons/app.ico" sizes="any" />
 <link rel="stylesheet" href="assets/fonts/fonts.css" />
 <link rel="stylesheet" href="styles.css" />
@@ -13,101 +13,121 @@
   <div class="stage-wrapper" id="stage-wrapper">
     <div class="stage" id="stage">
 
-      <!-- ============ AMBIENT SKY (behind every screen) ============ -->
-      <div class="sky" aria-hidden="true">
-        <div class="sky-glow"></div>
-        <div class="sky-cloud sky-cloud--a"></div>
-        <div class="sky-cloud sky-cloud--b"></div>
-        <div class="sky-cloud sky-cloud--c"></div>
-        <div class="sky-grain"></div>
-      </div>
-
       <!-- ============ PERSISTENT TOP BAR ============ -->
       <header class="topbar hidden" id="topbar">
-        <button class="topbar-brand" data-act="home" aria-label="Home">
-          <img class="topbar-crest" src="assets/icons/naf.png" alt="" />
-          <img class="topbar-crest" src="assets/icons/afcsc.png" alt="" />
-          <span class="topbar-text">
-            <span class="topbar-kicker">SK Aneke Hall of Fame · Department of Air Warfare</span>
-            <span class="topbar-title">History</span>
+        <button class="brand" data-act="home" aria-label="Go to the welcome screen">
+          <span class="brand-crests">
+            <img class="crest" src="assets/icons/naf.png" alt="Nigerian Air Force crest" />
+            <img class="crest" src="assets/icons/afcsc.png" alt="Armed Forces Command and Staff College crest" />
+          </span>
+          <span class="brand-text">
+            <span class="brand-host">Armed Forces Command and Staff College, Jaji</span>
+            <span class="brand-name">SK Aneke Hall of Fame <span class="brand-dot">·</span> The History Experience</span>
           </span>
         </button>
-        <!-- Labelled Back, on the left where visitors look first. It names where it
-             goes and only shows when that is somewhere other than Home. -->
-        <button class="back-btn hidden" data-act="back" id="btn-back">
-          <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
-          <span class="back-btn-text"><span class="back-btn-kicker">Back to</span><span class="back-btn-label" id="btn-back-label"></span></span>
-        </button>
-        <nav class="chapters" id="chapters" aria-label="Chapters"></nav>
-        <div class="topbar-right">
-          <button class="home-btn" data-act="home" id="btn-home" aria-label="Home">
-            <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9" /><path d="M9.5 20v-6h5v6" /></svg>
-            <span>Home</span>
-          </button>
-          <button class="icon-btn" data-act="toggle-big" id="btn-big" aria-pressed="false" aria-label="Larger text">
-            <svg viewBox="0 0 24 24"><path d="M3 18 7.5 6 12 18M4.7 14h5.6"/><path d="M14 18l3.5-9 3.5 9M15.2 15.2h4.6"/></svg>
-          </button>
-          <!-- Reach mode (moves this bar to the bottom of the screen) is switched off for now.
-               To bring it back, uncomment this button.
-          <button class="icon-btn" data-act="toggle-reach" id="btn-reach" aria-pressed="false" aria-label="Move the controls to the bottom of the screen">
-            <svg viewBox="0 0 24 24"><path d="M12 4v13"/><path d="m6.5 11.5 5.5 5.5 5.5-5.5"/><path d="M5 20.5h14"/></svg>
-          </button>
-          -->
-          <button class="icon-btn hidden" data-act="toggle-sound" id="btn-sound" aria-label="Mute background music">
-            <svg class="icon-sound-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
-            <svg class="icon-sound-off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>
-          </button>
-          <button class="kiosk-close" data-act="close-app" id="btn-close" title="Close" aria-label="Close SK Aneke Hall of Fame">
-            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
-          </button>
+
+        <div class="topbar-section" id="topbar-section">
+          <span class="topbar-n" id="section-n"></span>
+          <span class="topbar-rule"></span>
+          <span class="topbar-title" id="section-title"></span>
         </div>
+
+        <nav class="topbar-actions" aria-label="Exhibition controls">
+          <button class="btn btn--paper" data-act="back">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg>
+            Back
+          </button>
+          <button class="btn btn--paper" data-act="home">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9"/><path d="M9.5 20v-6h5v6"/></svg>
+            Home
+          </button>
+          <button class="btn btn--navy" data-act="close-app" aria-label="Close the Hall of Fame">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            Close
+          </button>
+        </nav>
       </header>
 
-      <!-- ============ SCREENS (rendered by script.js) ============ -->
+      <!-- ============ SCREEN ============ -->
       <main class="screens" id="screens">
-        <section class="screen active" id="screen-attract"></section>
-        <section class="screen" id="screen-home"></section>
-        <section class="screen" id="screen-timeline"></section>
-        <section class="screen" id="screen-films"></section>
-        <section class="screen" id="screen-chiefs"></section>
-        <section class="screen" id="screen-chief"></section>
-        <section class="screen" id="screen-college"></section>
-        <section class="screen" id="screen-daw"></section>
-        <section class="screen" id="screen-fleet"></section>
-        <section class="screen" id="screen-connect"></section>
-        <section class="screen" id="screen-archive"></section>
+        <section class="screen" id="screen"></section>
       </main>
 
+      <!-- ============ GALLERY DOCK ============ -->
+      <nav class="dock hidden" id="dock" aria-label="Exhibition galleries">
+        <button class="dock-end dock-end--prev" data-act="prev-section" id="dock-prev">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+          <span class="dock-end-text"><span class="dock-end-kicker">Previous</span><span class="dock-end-label" id="dock-prev-label">Welcome</span></span>
+        </button>
+        <div class="dock-items" id="dock-items"></div>
+        <button class="dock-end dock-end--next" data-act="next-section" id="dock-next">
+          <span class="dock-end-text"><span class="dock-end-kicker">Next</span><span class="dock-end-label" id="dock-next-label"></span></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+      </nav>
+
       <!-- ============ PHOTO VIEWER ============ -->
-      <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true">
-        <div class="lightbox-backdrop" data-act="lightbox-close"></div>
-        <button class="lightbox-nav lightbox-nav--prev" data-act="lightbox-prev" aria-label="Previous photo">
-          <svg viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/></svg>
-        </button>
-        <figure class="lightbox-figure" id="lightbox-figure">
-          <div class="lightbox-frame frame"><img id="lightbox-img" alt="" /></div>
-          <figcaption class="lightbox-caption">
-            <div class="lightbox-meta">
-              <span class="lightbox-date" id="lightbox-date"></span>
-              <span class="lightbox-count" id="lightbox-count"></span>
-            </div>
-            <div class="lightbox-title" id="lightbox-title"></div>
-            <div class="lightbox-text" id="lightbox-text"></div>
-            <button class="ghost-btn hidden" id="lightbox-link" data-act="lightbox-link">Read the story
-              <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+      <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="Photograph viewer">
+        <div class="lightbox-glow" aria-hidden="true"></div>
+        <header class="lightbox-top">
+          <div class="lightbox-count">
+            <span class="lightbox-n" id="lightbox-n">01</span>
+            <span class="lightbox-of">/ <span id="lightbox-total">01</span></span>
+          </div>
+          <span class="eyebrow lightbox-collection" id="lightbox-collection"></span>
+          <button class="btn btn--glass" data-act="lightbox-close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            Close
+          </button>
+        </header>
+        <div class="lightbox-stage">
+          <button class="round-btn round-btn--glass lightbox-prev" data-act="lightbox-prev" aria-label="Previous photograph">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+          </button>
+          <div class="lightbox-frame" id="lightbox-frame"><img id="lightbox-img" alt="" /></div>
+          <button class="round-btn round-btn--glass lightbox-next" data-act="lightbox-next" aria-label="Next photograph">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+        <footer class="lightbox-foot">
+          <div class="lightbox-caption" id="lightbox-caption"></div>
+          <div class="lightbox-strip" id="lightbox-strip"></div>
+        </footer>
+      </div>
+
+      <!-- ============ RECORD VIEWER (chiefs and collage) ============ -->
+      <div class="record hidden" id="record" role="dialog" aria-modal="true" aria-label="Record viewer">
+        <div class="record-stage">
+          <div class="record-grain" aria-hidden="true"></div>
+          <div class="record-figure" id="record-figure">
+            <img id="record-img" alt="" />
+          </div>
+          <div class="record-stage-top">
+            <span class="record-fig" id="record-fig"></span>
+          </div>
+          <div class="record-stage-nav">
+            <button class="round-btn" data-act="record-prev" aria-label="Previous record">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             </button>
-          </figcaption>
-        </figure>
-        <button class="lightbox-nav lightbox-nav--next" data-act="lightbox-next" aria-label="Next photo">
-          <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
-        </button>
-        <button class="icon-btn lightbox-close" data-act="lightbox-close" aria-label="Close">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
+            <span class="record-hint" id="record-hint"></span>
+            <button class="round-btn round-btn--navy" data-act="record-next" aria-label="Next record">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <aside class="record-panel">
+          <div class="record-actions">
+            <button class="btn btn--navy" data-act="record-close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              Close
+            </button>
+          </div>
+          <div class="record-body" id="record-body"></div>
+        </aside>
       </div>
 
       <!-- ============ FILM PLAYER ============ -->
-      <div class="player hidden" id="player" role="dialog" aria-modal="true">
+      <div class="player hidden" id="player" role="dialog" aria-modal="true" aria-label="Film player">
         <video id="player-video" playsinline preload="auto"></video>
         <div class="player-missing hidden" id="player-missing">
           <div class="eyebrow">Coming soon</div>
@@ -119,19 +139,20 @@
             <span class="player-sub" id="player-sub"></span>
             <span class="player-title" id="player-title"></span>
           </div>
-          <button class="icon-btn" data-act="film-close" aria-label="Close film">
-            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          <button class="btn btn--glass" data-act="film-close" aria-label="Close film">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            Close
           </button>
         </div>
         <div class="player-bottom">
-          <button class="icon-btn icon-btn--solid" data-act="film-toggle" aria-label="Play or pause" id="player-toggle">
-            <svg class="icon-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7Z"/></svg>
-            <svg class="icon-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+          <button class="round-btn round-btn--brass" data-act="film-toggle" aria-label="Play or pause" id="player-toggle">
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7Z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
           </button>
           <span class="player-time" id="player-time">0:00 / 0:00</span>
-          <div class="player-scrub" id="player-scrub"><div class="player-scrub-fill" id="player-scrub-fill"></div></div>
-          <button class="ghost-btn" data-act="film-read" id="player-read">Read the story</button>
-          <button class="ghost-btn" data-act="film-next" id="player-next">Next film</button>
+          <div class="player-scrub" id="player-scrub" role="slider" aria-label="Seek"><div class="player-scrub-fill" id="player-scrub-fill"></div></div>
+          <button class="btn btn--glass" data-act="film-read" id="player-read">Read the story</button>
+          <button class="btn btn--glass" data-act="film-next" id="player-next">Next film</button>
         </div>
       </div>
 

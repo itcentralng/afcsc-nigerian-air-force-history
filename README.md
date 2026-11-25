@@ -1,142 +1,117 @@
-# History
+# SK Aneke Hall of Fame
 
-**SK Aneke Hall of Fame · Department of Air Warfare · Armed Forces Command and Staff College, Nigeria**
+**Department of Air Warfare · Armed Forces Command and Staff College, Nigeria**
 
-Touch-screen kiosk covering the histories of the Nigerian Air Force, the
-College and the Department of Air Warfare, along with NAF bases and aircraft.
-It is a static, offline web app (no
-build step, no framework, no internet needed) designed for a 1920×1080
-landscape display and scaled to fit any screen. It follows the same pattern
-as the Timbuktu Triangle, Past Leaders and Directorate of Procurement kiosks.
+Touch-screen kiosk covering the history of the Nigerian Air Force, its Chiefs of
+the Air Staff, the College and the Department of Air Warfare.
+
+It is a static, offline web app (no build step, no framework, no internet
+needed) designed for a 1920×1080 landscape display and scaled to fit any
+screen. The presentation layer — colours, typography, layout and motion —
+follows the AFCSC *History Experience* exhibition: warm ivory paper, deep navy
+for strong moments, aviation blue for interaction, olive for military
+character and brass for dates and highlights.
 
 The content was extracted from the earlier web prototype at
-<https://aneke-hall-of-fame.netlify.app> and rebuilt here.
+<https://aneke-hall-of-fame.netlify.app>, lives in `data/content.js` and is
+untouched by this rework.
 
-## Four main sections
+## The exhibition
 
-The History kiosk is built around four sections, and only these appear on Home
-and in the top bar:
+Six galleries, with a welcome screen and a contents page. The numbers match the
+dock at the foot of every gallery.
 
-1. **History of the Nigerian Air Force** (the timeline)
-2. **Past Chiefs of the Air Staff**
-3. **History of the College**
-4. **History of the Department of Air Warfare**
+| # | Gallery | Route | What it holds |
+| --- | --- | --- | --- |
+| 01 | Welcome | `#/welcome` | The exhibition entrance: the NAF crest, the title, the gallery links and the figures |
+| — | Home | `#/home` | A rotating archive moment and a card for every gallery (reached from Welcome and the top bar) |
+| 02 | History | `#/history` | The six decades as a deck of cards; each moment links straight to the timeline |
+| 03 | Nigerian Air Force | `#/naf` | The era explorer and the full 1961–2026 timeline |
+| 04 | Chiefs of the Air Staff | `#/chiefs` | All 23 commanders and chiefs, 1963 to today, in one swipeable row |
+| 05 | The College | `#/college` | The 17 records from the history of the College on a light table |
+| 06 | Film Archive | `#/films` | The seven films in a theatre with a player |
+| 07 | Air Warfare | `#/daw` | The Department's history as flip cards and a ribbon |
 
-The films play from inside these sections (each year's films on the timeline,
-the lineage film with the Chiefs, the Jaji film with the College and the
-Department) and the intro film plays on the welcome and Home screens. The
-Films, Fleet & Bases, Find your connection and Photo archive screens below
-are still in the code but nothing links to them; to bring one back, add its
-key to `EXPLORE_KEYS` near the top of `script.js`.
+### History — the deck of six chapters
 
-## Screens
+The six decades are dealt as a deck. The open card shows its chapter — the
+photograph, the range, the title, the summary and its first moments — and the
+others are folded away showing their backs, the Roman numeral and the range.
+Cards before the open one stack to its left and the rest to its right. Touch a
+folded card and it turns face up while the open one turns over and folds into
+the stack (`#/history?chapter=3` opens the deck at a given card). Each card also
+carries an **Open this era on the timeline** button.
 
-- **Welcome**: the intro film plays full screen behind a left-aligned title
-  block: the Nigerian Air Force and AFCSC crests with today's date and time,
-  "Hall of Fame" with the years of service and key figures, and a card that
-  rotates through archive moments ("On this day" when an event shares
-  today's date). A row of runway approach lights leads to "Touch anywhere to
-  begin". If the film is missing, a slow slideshow of archive photographs
-  plays instead. Any touch begins.
-- **Home**: a contents page over the intro film: "Explore the history",
-  a "Start here" film, a rotating archive moment and a row of lights showing
-  which chapters have been visited, beside the seven numbered chapters with
-  thumbnails.
-- **Top bar**: both crests and the Hall of Fame name (tap for Home); a gold
-  **Back** button that retraces the visitor's own path one step at a time
-  (every page, year, decade and Chief they moved to) and names where it goes
-  ("Back to Past Chiefs", "Back to Emmanuel E. Ikwue", "Back to 1983"); it
-  appears only when that is somewhere other than Home; the
-  section navigation; then a labelled **Home** button, larger text and a
-  small **✕** that closes the kiosk window (as in the Timbuktu Triangle app).
-- **01 · Timeline**: six decades as tabs, and a 1961–2026 skyline of bars
-  you sweep with a finger (bar height shows how much happened). A decade shows its summary, its films and every year with events;
-  a year shows the Chief of the Air Staff at the time, each event with its
-  photographs, and the film that tells it.
-- **Films**: seven short films in a full-screen player with scrubbing,
-  "Next film" and a "Read the story" link back into the history. Any film not
-  yet copied to `assets/video/` shows as "Coming soon" (see
-  `assets/video/README.txt` for the file names); it appears automatically once
-  the file is in place.
-- **02 · Past Chiefs of the Air Staff**: the 22 officers who led the service
-  from 1963 to 2025, each tenure drawn to scale on a ribbon, and a portrait
-  gallery to sweep through. Each Chief has a biography page: tenure, time in
-  office, birth, state of origin, notable achievements, sources, and
-  everything that happened under his command. The serving Chief of the Air
-  Staff is not listed here (the Hall of Fame bears his name); he appears on the
-  timeline as the Chief of the Air Staff for 2025 and 2026, without a link.
-- **03 · The College** and **04 · Air Warfare**:
-  illustrated chronicles along a vertical spine, linked to each other.
-- **05 · Fleet & Bases**: a map of Nigeria with 20 bases (tap a pin or a name)
-  and an aircraft hangar of 20 types, filterable by decade of entry.
-- **06 · Find your connection**: pick your state, your birth year (decade,
-  then year) or a Chief, and see the Chiefs, bases and moments connected to it.
-- **07 · Photograph archive**: all 242 photographs in one grid, filterable by
-  collection, each opening full screen with its caption and a link to its story.
+### Nigerian Air Force — eras and timeline
 
-Every photograph opens in the photo viewer (swipe or use the arrows; tap
-"Read the story" to jump to where it belongs).
+This gallery merges what used to be the era explorer and the timeline.
 
-**Accessibility**: the **A A** button enlarges body text. A **Reach** mode,
-which moves the top bar to the bottom of the screen for children and
-wheelchair users, is built in but its button is commented out in
-`index.html` for now; uncomment it to bring it back.
+- **Eras** (`#/naf`) — the six decades as full-height folders. The open folder
+  shows its brief, its moment count and its first record; the others stand
+  collapsed with their title running up the side. Touch a folder to open it.
+- **More info** (`#/naf?era=2&year=1984`) — the folders shrink to a strip at
+  the top of the screen and the detailed timeline opens below it: the floating
+  print stack (the moment's photograph, its neighbours and a film card) on the
+  left, the text on the right, and the year cards along the bottom. The strip
+  switches era; the year cards and the arrows move through the moments.
 
-After 90 seconds without a touch a "Still exploring?" prompt counts down
-10 seconds, then the kiosk resets to the welcome screen (it waits while a film
-is playing). Timings are at the top of `script.js`.
+### Records
 
-## Motion
+The Chiefs wall and the light table both open the **record viewer**: a navy
+stage with the full photograph, and a paper panel carrying the title, dates,
+facts, biography, achievements and sources, with previous/next through the
+collection. Every photograph can be opened full screen in the **photo viewer**,
+which carries a counter, a caption and a thumbnail strip.
 
-The kiosk carries the flight-curtain motion language of the AFCSC exhibition,
-dressed in this app's green, gold and ivory. All of it is decorative and is
-built at runtime by `script.js`, so `index.html` and `data/content.js` are
-untouched.
+## Screens and controls
 
-- **Flight curtain**: every change of screen is covered by a gold panel chased
-  by a green one carrying a jet, two contrails and the chapter number and
-  title, about 0.6 s each way. Steps *inside* a page (a decade, a year, the
-  next Chief) change in place, without the curtain.
-- **Top bar**: the gold underline grows under the open chapter and a small jet
-  taxis along the bar to it, turning to face the way it travelled.
-- **Welcome**: a radar field turns behind the title, three gold and ivory
-  dotted flight paths draw themselves in, and two aircraft fly past (one near,
-  one far) trailing gold dotted contrails — all of it behind the text. The
-  crests blur in, the title is clip-revealed, the figures rise, and the "Touch
-  anywhere to begin" row pulses.
-- **Pages**: cards and links fade and lift as they scroll into view; the
-  skyline bars grow from the baseline; a gold jet marks the year selected on
-  the ruler; the lineage draws itself and a jet sweeps the bar to the present;
-  portraits pan slowly inside their frames.
-- **Standby**: the "Still exploring?" prompt shows the crest, a floating jet
-  and a gold rule while it counts down.
+- **Top bar** — both crests (AFCSC and the Nigerian Air Force) and the gallery
+  name; the section number and title in the centre; **Back** (retraces the
+  visitor's own path), **Home** and **Close** (closes the kiosk window).
+- **Dock** — the six galleries with their numbers, plus previous/next ends that
+  name where they lead. The welcome and home screens are reached from the
+  **Home** button and the entrance, so they are not in the dock.
+- **Flight curtain** — every change of gallery is covered by a brass panel
+  chased by a navy one carrying a jet and the gallery title.
+- **Keyboard** — `Esc` closes an overlay; `←`/`→` step through the timeline and
+  the photo viewer.
+- **Idle** — after 120 seconds without a touch a "Are you still exploring?"
+  prompt counts down 10 seconds, then the kiosk returns to the welcome screen.
 
-Reduced motion is respected: with `prefers-reduced-motion: reduce` the curtain,
-radar, flight paths and flypasts are switched off and every entrance becomes a
-plain appearance, so the kiosk behaves as it did before.
+Timings (`IDLE_MS`, `IDLE_COUNT`, `MOMENT_ROTATE_MS`) are at the top of
+`script.js`.
 
-Three things were **moved** to make room for the motion (nothing added or
-removed): the welcome title block sits on a 268 px baseline with the archive
-card aligned to its lede; on Home the four progress lights head the list of
-chapters instead of closing the left column; and on the College and Air Warfare
-pages the "Continue" button sits under the masthead, so the way forward is
-always in view.
+## Files
+
+```
+index.html            the shell: top bar, screen, dock, viewers, player, idle
+styles.css            the design system and every screen
+script.js             the router, the views and the overlays
+data/content.js       all of the content (window.HOF_CONTENT)
+assets/               photographs, portraits, films, crests, fonts
+docs/                 the history as a plain reference document
+tools/                media fetching, content extraction, portrait cropping
+source/               the archive of the original prototype
+run.bat               launch the kiosk in Edge kiosk mode
+prepare.bat           create the Desktop shortcut
+update.bat            pull the latest version and restart
+```
 
 ## Running on the kiosk
 
 1. Copy the whole folder onto the kiosk PC, including `assets/`.
 2. Run `prepare.bat` once to create a Desktop shortcut (then pin it to the taskbar).
 3. Launch with the shortcut or `run.bat`. It opens Microsoft Edge in full-screen kiosk mode.
-4. To update later, run `update.bat`. It closes the kiosk, fast-forward updates from the configured GitHub branch, and restarts it. Git and an internet connection are required; local changes that prevent a safe update are left untouched.
+4. To update later, run `update.bat`. It closes the kiosk, fast-forwards from the configured GitHub branch, and restarts it. Git and an internet connection are required; local changes that prevent a safe update are left untouched.
 
 For development, open `index.html` in any modern browser.
 
 ## Media
 
 The photos and films live under `assets/history`, `assets/photos`,
-`assets/college` and `assets/video`, at the exact paths named in
-`data/content.js`. Anything missing shows a quiet placeholder (and films show
-"Coming soon"), so the kiosk never breaks.
+`assets/college`, `assets/portraits` and `assets/video`, at the exact paths
+named in `data/content.js`. Anything missing disappears quietly (and a film
+shows "Coming soon"), so the kiosk never breaks.
 
 To fetch them from the original site:
 
@@ -145,29 +120,24 @@ To fetch them from the original site:
 - Inside this repository: `bash tools/fetch-media.sh` downloads anything
   missing straight into `assets/`.
 
-Optional background music: drop a loop at `assets/audio/ambient.mp3` and a
-mute button appears; it ducks while a film plays.
-
 ## Updating content
 
 Everything lives in `data/content.js` (`window.HOF_CONTENT`):
 
 | Key | What it holds |
 | --- | --- |
-| `meta` | Titles and tagline |
-| `decades` | `from`, `to`, `title`, `summary` for the six decade chips |
-| `events` | Timeline moments, oldest first: `year`, `date` (as displayed), `title`, `text` (paragraphs), `photos`, `caption` (for the first photo), optional `film` (a film `id`) and `state` (links it to *Find your connection*) |
-| `chiefs` | In order: `no`, `name`, `shortName`, `rank`, `from`/`to` (`YYYY-MM-DD`, `to: null` while serving), `born`, `died`, `state`, `serving`, `bio`, `achievements`, `sources`, `photo` (archive scan), `portrait` (even crop) |
-| `bases` | `id`, `city`, `state`, `lon`/`lat` (map position), `role`, `photo`, `caption`, `text`, optional `labelDx`/`labelDy` to nudge the map label |
-| `aircraft` | `name`, `origin`, `role`, `inService`, `note`, `photo`, `caption` |
-| `films` | `id`, `title`, `subtitle`, `src`, `description`, and `year` or `section` for the "Read the story" link |
+| `meta` | Titles, host line and tagline |
+| `decades` | `from`, `to`, `title`, `summary` for the six eras |
+| `events` | Timeline moments, oldest first: `year`, `date` (as displayed), `title`, `text` (paragraphs), `photos`, `caption` (for the first photo), optional `state` |
+| `chiefs` | In order: `no`, `name`, `shortName`, `rank`, `from`/`to` (`YYYY-MM-DD`, `to: null` while serving), `born`, `died`, `state`, `bio`, `achievements`, `sources`, `photo` (archive scan), `portrait` (even crop) |
+| `films` | `id`, `title`, `subtitle`, `src`, `description`, and `year` or `section` |
 | `chronicles` | `college` and `daw`: `eyebrow`, `title`, `intro`, `hero`, `heroCaption`, `items` (`date`, `title`, `text`, `photos`, `caption`) |
-| `states` | The 36 states and FCT for the state picker |
-| `nigeriaOutline` | Country outline as `[lon, lat]` points |
+| `bases`, `aircraft`, `states`, `nigeriaOutline` | Still in the file for the original prototype; the kiosk no longer shows them |
 
-Counts on the home screen, the archive, the lineage ribbon and the
-connections are all worked out from this file, so adding an event, a Chief or
-a photo needs no code change.
+Counts on the welcome screen, the era folders and the wall are worked out from
+this file, so adding an event, a Chief or a College record needs no code
+change. Adding an event to a decade also adds it to that era's timeline and
+year cards.
 
 `docs/naf-history-llm-context.txt` is the same history as a clean reference
 document for use as LLM context (facts and narrative only: no photos,
@@ -176,19 +146,17 @@ captions, films or kiosk wording). Regenerate it after editing with
 
 ## Chief portraits
 
-The archive photos of the Chiefs vary a lot: some are tight head shots,
-others are framed certificates with the name printed underneath, and the
-early ones carry long captions. So every Chief also has an evenly cropped
-`portrait` in `assets/portraits/` (4:5, the face the same size and at the
-same height in each). The gallery, the Chief pages and the timeline cards use
-the portrait; the full-screen viewer and the timeline photos still show the
-whole original scan.
+The archive photos of the Chiefs vary a lot: some are tight head shots, others
+are framed certificates with the name printed underneath, and the early ones
+carry long captions. So every Chief also has an evenly cropped `portrait` in
+`assets/portraits/` (4:5, the face the same size and at the same height in
+each). The wall and the record viewer use the portrait.
 
 To redo them (for example after replacing a photo), install Pillow and
 `opencv-python-headless` (version 4) and run
 `python3 tools/crop-chief-portraits.py`. It finds each face automatically;
-`OVERRIDES` in the script holds a hand-set face box for the three it
-misses, and `BOUNDS` keeps the crop clear of printed captions and borders.
+`OVERRIDES` in the script holds a hand-set face box for the three it misses,
+and `BOUNDS` keeps the crop clear of printed captions and borders.
 
 ## Source archive
 
@@ -196,7 +164,13 @@ misses, and `BOUNDS` keeps the crop clear of printed captions and borders.
 prototype. `node tools/extract-content.js` rebuilds `data/content.js` from it;
 only re-run that if the archive is replaced, since it overwrites hand edits.
 
-## Fonts
+## Fonts and colours
 
-Playfair Display, Source Sans 3 and IBM Plex Mono are bundled in
-`assets/fonts` (SIL Open Font License) so nothing loads from the internet.
+Manrope (interface) and Playfair Display (titles) are bundled in
+`assets/fonts` under the SIL Open Font License and loaded by
+`assets/fonts/fonts.css`, so nothing loads from the internet. The earlier
+Source Sans 3 files stay in place as the fallback in the font stack.
+
+The palette, gradients, shadows, radii and easing curves are defined once at
+the top of `styles.css` as custom properties; change them there and the whole
+kiosk follows.
